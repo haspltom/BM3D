@@ -38,4 +38,4 @@ $(OBJDIR)/main.o: $(SRCDIR)/main.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
  
 clean:
-	rm bm3d $(OBJ) $(IMGDIR)/rgb/denoised*.png $(IMGDIR)/yuv/noisy*.png groups/*
+	rm bm3d $(OBJ) $(IMGDIR)/rgb/denoised*.png $(IMGDIR)/yuv/noisy*.png 
