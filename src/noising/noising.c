@@ -3,10 +3,10 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include "noising.h"
-#include "../../png_io/png_io.h"
 #include "../../error/error.h"
+#include "../../png_io/png_io.h"
 #include "../../utils/utils.h"
+#include "noising.h"
 
 int image_noise (char* const infile, int const std_dev) {
 	png_img img;
@@ -68,6 +68,27 @@ int image_noise (char* const infile, int const std_dev) {
 
 	// write output image
 	if (png_write(&img, outfile) != 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+// main procedure, which calls the noising() function
+int main (int argc, char **argv) {
+	char* err_prefix = "[ERROR] ... ";
+
+	// check arguments
+	if (argc < 3) {
+		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
+		printf ("Usage:\n");
+		printf ("noising <standard deviation> <filename>\n");
+		return 1;
+	}
+
+	if (image_noise(argv[2], atoi(argv[1])) != 0) {
+		printf ("%s%s\n", err_prefix, ptr);
+		// free (ptr); //TODO
 		return 1;
 	}
 
