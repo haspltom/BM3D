@@ -5,6 +5,7 @@
 #include "bm3d.h"
 #include "../png_io/png_io.h"
 #include "../error/error.h"
+#include "../csv_export/csv_export.h"
 #include "../utils/utils.h"
 
 // function that make the coversion from RGB to YUV
@@ -462,8 +463,8 @@ int bm3d (char* const infile, 			// name of input file
 	// convert colorspace from RGB to YUV
 	rgb2yuv (&img);
 
-	// set output filename
-	if (get_output_filename (outfile, "img/yuv/", "noisy_yuv", std_dev) != 0) {
+	// set filename for noisy yuv output image
+	if (get_output_filename (outfile, "img/yuv/", "noisy_yuv", "png", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
@@ -553,6 +554,18 @@ int bm3d (char* const infile, 			// name of input file
 
 	printf ("[INFO] ... nr of groups in list: %d\n", list_length(&list));
 
+	// set filename for txt-file of groups
+	if (get_output_filename (outfile, "./", "groups", "txt", block_size) != 0) {
+		generate_error ("Unable to process output filename...");
+		return 1;
+	}
+
+	// add number of groups and computation time to txt-file for statistical evaluation
+	if (add_csv_line(outfile, block_step, list_length(&list), 0.9) != 0) {
+		generate_error ("Unable to add values to csv-file...");
+		return 1;
+	}
+
 	// perform actual denoising of the actual block group (regarding to one ref_block)
 
 	// hard thresholding
@@ -566,8 +579,8 @@ int bm3d (char* const infile, 			// name of input file
 	// convert colorspace from YUV back to RGB
 	yuv2rgb (&img);
 
-	// set output filename
-	if (get_output_filename (outfile, "img/rgb/", "denoised_rgb", std_dev) != 0) {
+	// set filename for denoised rgb output image
+	if (get_output_filename (outfile, "img/rgb/", "denoised_rgb", "png", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}

@@ -2,6 +2,6 @@
 #define UTILS_H
 
 extern int limit (int const x);
-extern int get_output_filename (char* outfile, char* const path, char* const prefix, int const std_dev);
+extern int get_output_filename (char* outfile, char* const path, char* const prefix, char* const ext, int const attr);
 
 #endif // UTILS_H

@@ -7,14 +7,14 @@ int limit (int const x) {
 }
 
 // produces an output filename from given string literals
-int get_output_filename (char* outfile, char* const path, char* const prefix, int const std_dev) {
+int get_output_filename (char* outfile, char* const path, char* const prefix, char* const ext, int const attr) {
 	int count;
 
-	if (std_dev < 100) {
-		count = sprintf (outfile, "%s%s[0%d].png", path, prefix, std_dev); 
+	if (attr < 100) {
+		count = sprintf (outfile, "%s%s[0%d].%s", path, prefix, attr, ext); 
 	}
 	else {
-		count = sprintf (outfile, "%s%s[%d].png", path, prefix, std_dev);
+		count = sprintf (outfile, "%s%s[%d].%s", path, prefix, attr, ext);
 	}
 
 	return (count == 0) ? 1 : 0;
