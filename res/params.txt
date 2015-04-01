@@ -1,0 +1,14 @@
+# Config-File for the BM3D denoising algorithm
+# Thomas Haspl
+# 30.03.2015
+
+BEGIN_PARAMS
+	BLOCK_SIZE 9
+	BLOCK_STEP 7
+	SIGMA 10
+	MAX_BLOCKS 28
+	H_SEARCH 150
+	V_SEARCH 150
+END_PARAMS
+
+# another comment for testing
