@@ -555,7 +555,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... nr of groups in list: %d\n", list_length(&list));
 
 	// set filename for txt-file of groups
-	if (get_output_filename (outfile, "./", "groups", "txt", block_size) != 0) {
+	if (get_output_filename (outfile, "grp/", "groups", "txt", block_size) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
