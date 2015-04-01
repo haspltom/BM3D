@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "bm3d.h"
+#include <time.h>
 #include "../png_io/png_io.h"
 #include "../error/error.h"
 #include "../csv_export/csv_export.h"
 #include "../utils/utils.h"
+#include "bm3d.h"
 
 // function that make the coversion from RGB to YUV
 void rgb2yuv (png_img* img) {
@@ -433,6 +434,8 @@ int bm3d (char* const infile, 			// name of input file
 	int i, j, k, l;
 	group_t group = 0;						// group, which holds a set of similar blocks
 	list_t list = 0;							// list of groups
+	clock_t bm_start, bm_end;				// time variables for block matching start and end
+	double time;
 
 	// read input image
 	if (png_read(&img, infile) != 0) {
@@ -489,6 +492,9 @@ int bm3d (char* const infile, 			// name of input file
 		- apply denoising
 		- next pixel
 	*/
+
+	printf ("[INFO] ... launch block-matching...\n");
+	bm_start = clock();
 
 	// compare blocks according to the sliding-window manner
 	for (j=0; j<img.height; j=j+block_step) {
@@ -552,7 +558,12 @@ int bm3d (char* const infile, 			// name of input file
 	// 	return 1;
 	// }
 
-	printf ("[INFO] ... nr of groups in list: %d\n", list_length(&list));
+	bm_end = clock();
+	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+
+	printf ("[INFO] ... finished block-matching...\n");
+	printf ("[INFO] ... number of groups in list: %d\n", list_length(&list));
+	printf ("[INFO] ... elapsed time: %f\n\n", time);
 
 	// set filename for txt-file of groups
 	if (get_output_filename (outfile, "grp/", "groups", "txt", block_size) != 0) {
@@ -561,7 +572,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// add number of groups and computation time to txt-file for statistical evaluation
-	if (add_csv_line(outfile, block_step, list_length(&list), 0.9) != 0) {
+	if (add_csv_line(outfile, block_step, list_length(&list), time) != 0) {
 		generate_error ("Unable to add values to csv-file...");
 		return 1;
 	}
