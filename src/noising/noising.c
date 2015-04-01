@@ -61,7 +61,7 @@ int image_noise (char* const infile, int const std_dev) {
 	}
 
 	// set output filename
-	if (get_output_filename (outfile, "../img/rgb/", "noisy_rgb_house", std_dev) != 0) {
+	if (get_output_filename (outfile, "img/rgb/", "noisy_rgb_house", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}

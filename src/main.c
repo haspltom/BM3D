@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "error/error.h"
 #include "param_pars/param_pars.h"
 #include "bm3d/bm3d.h"

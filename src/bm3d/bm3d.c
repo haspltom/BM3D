@@ -463,7 +463,7 @@ int bm3d (char* const infile, 			// name of input file
 	rgb2yuv (&img);
 
 	// set output filename
-	if (get_output_filename (outfile, "../img/yuv/", "noisy_yuv", std_dev) != 0) {
+	if (get_output_filename (outfile, "img/yuv/", "noisy_yuv", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
@@ -567,7 +567,7 @@ int bm3d (char* const infile, 			// name of input file
 	yuv2rgb (&img);
 
 	// set output filename
-	if (get_output_filename (outfile, "../img/rgb/", "denoised_rgb", std_dev) != 0) {
+	if (get_output_filename (outfile, "img/rgb/", "denoised_rgb", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
