@@ -16,7 +16,18 @@ extern int generate_params_file (unsigned int const block_size,
 	char prefix[30];
 	char line[50];
 
-	sprintf (prefix, "params_%d-%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+	if ((block_size < 10) && (block_step >= 10)) {
+		sprintf (prefix, "params_0%d-%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+	}
+	else if ((block_size >= 10) && (block_step < 10)) {
+		sprintf (prefix, "params_%d-0%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+	}
+	else if ((block_size < 10) && (block_step < 10)) {
+		sprintf (prefix, "params_0%d-0%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+	}
+	else {
+		sprintf (prefix, "params_%d-%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+	}
 
 	// set filename for parameter file
 	if (get_output_filename (outfile, "res/", prefix, "txt", 0) != 0) {
