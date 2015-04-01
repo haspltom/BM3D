@@ -3,9 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include "bm3d.h"
-#include "../../png_io/png_io.h"
-#include "../../error/error.h"
-#include "../../utils/utils.h"
+#include "../png_io/png_io.h"
+#include "../error/error.h"
+#include "../utils/utils.h"
 
 // function that make the coversion from RGB to YUV
 void rgb2yuv (png_img* img) {
