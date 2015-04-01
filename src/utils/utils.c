@@ -10,11 +10,16 @@ int limit (int const x) {
 int get_output_filename (char* outfile, char* const path, char* const prefix, char* const ext, int const attr) {
 	int count;
 
-	if (attr < 100) {
-		count = sprintf (outfile, "%s%s[0%d].%s", path, prefix, attr, ext); 
+	if (attr != 0) {
+		if (attr < 100) {
+			count = sprintf (outfile, "%s%s[0%d].%s", path, prefix, attr, ext); 
+		}
+		else {
+			count = sprintf (outfile, "%s%s[%d].%s", path, prefix, attr, ext);
+		}
 	}
 	else {
-		count = sprintf (outfile, "%s%s[%d].%s", path, prefix, attr, ext);
+		count = sprintf (outfile, "%s%s.%s", path, prefix, ext); 
 	}
 
 	return (count == 0) ? 1 : 0;
