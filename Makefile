@@ -1,7 +1,7 @@
 CC      = clang
-BIN     = noising bm3d
+BIN     = noising param_gen bm3d
 DIRS    = objdir rgbdir yuvdir grpdir
-SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c bm3d.c
+SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
 MKDIR   = mkdir
@@ -31,6 +31,10 @@ noising: $(OBJDIR)/noising.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/util
 	@echo "Link $< ..."
 	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o $(OBJDIR)/noising.o $(LIBS)
  
+param_gen: $(OBJDIR)/param_gen.o $(OBJDIR)/error.o $(OBJDIR)/utils.o
+	@echo "Link $< ..."
+	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/utils.o $(OBJDIR)/param_gen.o $(LIBS)
+ 
 bm3d: $(OBJDIR)/main.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/csv_export.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o
 	@echo "Link $< ..."
 	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/csv_export.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o $(OBJDIR)/main.o $(LIBS)
@@ -56,6 +60,10 @@ $(OBJDIR)/utils.o: $(SRCDIR)/utils/utils.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
        
 $(OBJDIR)/noising.o: $(SRCDIR)/noising/noising.c
+	@echo "Compile $< ..."
+	@$(CC) -c $(CFLAGS) -o $@ $<
+       
+$(OBJDIR)/param_gen.o: $(SRCDIR)/param_gen/param_gen.c
 	@echo "Compile $< ..."
 	@$(CC) -c $(CFLAGS) -o $@ $<
        
