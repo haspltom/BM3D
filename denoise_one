@@ -1,3 +1,1 @@
-make clean
-make
-./bm3d ../img/rgb/noisy_rgb_house[010].png params.txt
+./bm3d img/rgb/noisy_rgb_house[010].png params.txt
