@@ -3,9 +3,9 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
-#include "../../error/error.h"
-#include "../../png_io/png_io.h"
-#include "../../utils/utils.h"
+#include "../error/error.h"
+#include "../png_io/png_io.h"
+#include "../utils/utils.h"
 #include "noising.h"
 
 int image_noise (char* const infile, int const std_dev) {
