@@ -12,13 +12,7 @@ typedef struct params {
 
 typedef enum states {
 	IDLE,
-	ACTIVE,
-	BLOCK_STEP,
-	BLOCK_SIZE,
-	SIGMA,
-	MAX_BLOCKS,
-	H_SEARCH,
-	V_SEARCH
+	ACTIVE
 } state;
 
 extern int get_params (char* const filename, params_t* params);

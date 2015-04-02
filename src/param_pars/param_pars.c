@@ -56,25 +56,27 @@ int get_params (char* const filename, params_t* params) {
 			st = IDLE;
 		}
 
-		// set the appropriate status
-		if (st == ACTIVE) {
-			if (strstr(tmp, "BLOCK_SIZE") != NULL) st = BLOCK_SIZE;
-			if (strstr(tmp, "BLOCK_STEP") != NULL) st = BLOCK_STEP;
-			if (strstr(tmp, "SIGMA") != NULL) st = SIGMA;
-			if (strstr(tmp, "MAX_BLOCKS") != NULL) st = MAX_BLOCKS;
-			if (strstr(tmp, "H_SEARCH") != NULL) st = H_SEARCH;
-			if (strstr(tmp, "V_SEARCH") != NULL) st = V_SEARCH;
-		}
-
 		// write the extracted value to the regarding variable
-		params->block_size = (st == BLOCK_SIZE) ? get_val(tmp) : params->block_size;
-		params->block_step = (st == BLOCK_STEP) ? get_val(tmp) : params->block_step;
-		params->sigma = (st == SIGMA) ? get_val(tmp) : params->sigma;
-		params->max_blocks = (st == MAX_BLOCKS) ? get_val(tmp) : params->max_blocks;
-		params->h_search = (st == H_SEARCH) ? get_val(tmp) : params->h_search;
-		params->v_search = (st == V_SEARCH) ? get_val(tmp) : params->v_search;
-
-		st = ACTIVE; 																// reset status for the next value
+		if (st == ACTIVE) {
+			if (strstr(tmp, "BLOCK_SIZE") != NULL) {
+				params->block_size = get_val(tmp);
+			}
+			else if (strstr(tmp, "BLOCK_STEP") != NULL) {
+				params->block_step = get_val(tmp);
+			}
+			else if (strstr(tmp, "SIGMA") != NULL) {
+				params->sigma = get_val(tmp);
+			}
+			else if (strstr(tmp, "MAX_BLOCKS") != NULL) {
+				params->max_blocks = get_val(tmp);
+			}
+			else if (strstr(tmp, "H_SEARCH") != NULL) {
+				params->h_search = get_val(tmp);
+			}
+			else if (strstr(tmp, "V_SEARCH") != NULL) {
+				params->v_search = get_val(tmp);
+			}
+		}
 	}
 
 	// close file again
