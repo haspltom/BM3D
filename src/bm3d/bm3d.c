@@ -218,13 +218,18 @@ int print_list (list_t const list) {
 	FILE* fd = 0;
 	group_node_t* tmp = list;
 	node_t* tmp_block;
-	char groupname[50];
+	char groupname[40];
 	int count = 0;
 
-	printf ("printing groups...\n");
+	printf ("[INFO} ... printing groups to file...\n");
 
 	while (tmp != NULL) {
-		sprintf (groupname, "groups/group[%d].txt", ++count);
+		//obtain output filename
+		if (get_output_filename (groupname, "grp/", "group", "txt", ++count) != 0) {
+			generate_error ("Unable to process output filename for group...");
+			return 1;
+		}
+
 		fd = fopen (groupname, "w");
 		
 		if (fd == NULL) {
@@ -233,12 +238,12 @@ int print_list (list_t const list) {
 		}
 
 		tmp_block = tmp->group;
-		fprintf (fd, "nr of blocks in group: %d\n\n", group_length(&tmp_block));
-		fprintf (fd, "reference block...\n");
+		fprintf (fd, "[INFO} ... nr of blocks in group: %d\n\n", group_length(&tmp_block));
+		fprintf (fd, "[INFO} ... reference block...\n");
 
 		while (tmp_block != NULL) {
 			print_block (fd, tmp_block->block);
-			fprintf (fd, "distance to reference block: %f\n\n", tmp_block->distance);
+			fprintf (fd, "[INFO} ... distance to reference block: %f\n\n", tmp_block->distance);
 			tmp_block = tmp_block->next;
 		}
 
@@ -554,9 +559,9 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
-	// if (print_list(list) != 0) {
-	// 	return 1;
-	// }
+	if (print_list(list) != 0) {
+		return 1;
+	}
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
@@ -566,7 +571,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... elapsed time: %f\n\n", time);
 
 	// set filename for txt-file of groups
-	if (get_output_filename (outfile, "grp/", "groups", "txt", block_size) != 0) {
+	if (get_output_filename (outfile, "bms/", "block_matching_statistics", "csv", block_size) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
