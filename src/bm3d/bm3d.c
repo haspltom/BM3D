@@ -315,6 +315,36 @@ void dct_1d (int const len, double arr[len]) {
 	}
 }
 
+void dct_2d (int const len, double arr[len][len]) {
+	int i, j, k, l;
+	double sum, ai, aj;			// multiplicative constants
+	double tmp[len][len];		// dct-value buffer
+	double fac;						// result of the cosine multiplication
+
+	for (j=0; j<len; ++j) {
+		for (i=0; i<len; ++i) {
+			ai = (i == 0) ? 1.0 / sqrt((double)len) : sqrt(2.0/(double)len);
+			aj = (j == 0) ? 1.0 / sqrt((double)len) : sqrt(2.0/(double)len);
+
+			for (l=0; l<len; ++l) {
+				for (k=0; k<len; ++k) {
+					fac = cos((PI/(double)len) * ((double)l + 0.5) * (double)j) * cos((PI/(double)len) * ((double)k + 0.5) * (double)i);
+					sum += arr[l][k] * fac;
+				}
+			}
+			tmp[j][i] = ai * aj * sum;
+			sum = 0.0;
+		}
+	}
+
+	// write back to original matrix
+	for (j=0; j<len; ++j) {
+		for (i=0; i<len; ++i) {
+			arr[j][i] = tmp[j][i];
+		}
+	}
+}
+
 void hard_threshold (int const bs, double mat[bs][bs], double const lambda, int const std_dev) {
 	int i, j;
 	double threshold = lambda * (double)std_dev * sqrt(2*log(bs*bs));
@@ -375,28 +405,30 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const std
 	double lambda = 0.82;
 
 	// obtain regarding DCT transformation matrix
-	get_dct_matrixes (bs, dct_trans, dct_trans_t);
+	// get_dct_matrixes (bs, dct_trans, dct_trans_t);
 
 	// subtract 128 for DCT transformation
 	shift_values (bs, ref_block, ref_mat);
 	shift_values (bs, cmp_block, cmp_mat);
 
 	// perform DCT on reference block by two matrix multiplications
-	matrixmul (bs, dct_trans, ref_mat, dct_tmp);
-	matrixmul (bs, dct_tmp, dct_trans_t, ref_dct);
+	// matrixmul (bs, dct_trans, ref_mat, dct_tmp);
+	// matrixmul (bs, dct_tmp, dct_trans_t, ref_dct);
+	dct_2d (bs, ref_mat);
 
 	// perform DCT on compare block by two matrix multiplications
-	matrixmul (bs, dct_trans, cmp_mat, dct_tmp);
-	matrixmul (bs, dct_tmp, dct_trans_t, cmp_dct);
+	// matrixmul (bs, dct_trans, cmp_mat, dct_tmp);
+	// matrixmul (bs, dct_tmp, dct_trans_t, cmp_dct);
+	dct_2d (bs, cmp_mat);
 
 	// perform thresholding on reference block
-	hard_threshold (bs, ref_dct, lambda, std_dev);
+	hard_threshold (bs, ref_mat, lambda, std_dev);
 
 	// perform thresholding on compare block
-	hard_threshold (bs, cmp_dct, lambda, std_dev);
+	hard_threshold (bs, cmp_mat, lambda, std_dev);
 
 	// subtract compare block from reference block
-	subtract_blocks (bs, ref_dct, cmp_dct, sub_mat);
+	subtract_blocks (bs, ref_mat, cmp_mat, sub_mat);
 
 	// perform L2 norm on the difference of the two matrices
 	distance = l2_norm(bs, sub_mat) / (double)bs;
