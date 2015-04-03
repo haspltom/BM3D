@@ -265,42 +265,6 @@ void free_group (group_t* group){
 	}
 }
 
-// produces DCT transformation and its transposed matrix regarding to the block size
-void get_dct_matrixes (int const bs, double trans[bs][bs], double trans_t[bs][bs]) {
-	int i, j;
-
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			if (j == 0) {
-				trans[i][j] = 1 / sqrt(bs);
-			}
-			else {
-				trans[i][j] = sqrt(2/(double)bs) * cos(((2*i+1)*j*PI)/(2*(double)bs));
-			}
-
-			trans_t[j][i] = trans[i][j];
-		}
-	}
-}
-
-// function for multiplying two matrixes
-void matrixmul (int const bs, double const m1[bs][bs], double const m2[bs][bs], double res[bs][bs]) {
-	int i, j, k;
-	double sum = 0.0;
-
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			sum = 0.0;
-
-			for (k=0; k<bs; ++k) {
-				sum += m1[j][k] * m2[k][i];
-			}
-
-			res[i][j] = sum;
-		}
-	}
-}
-
 void dct_1d (int const len, double arr[len]) {
 	int i, j;
 	double sum = 0.0;
@@ -393,32 +357,20 @@ double l2_norm (int const bs, double const mat[bs][bs]) {
 // performs a check, whether two given blocks are similar
 double get_block_distance (block_t* ref_block, block_t* cmp_block, int const std_dev) {
 	int const bs = ref_block->block_size;
-	double dct_trans[bs][bs];
-	double dct_trans_t[bs][bs];
 	double ref_mat[bs][bs];
 	double cmp_mat[bs][bs];
-	double dct_tmp[bs][bs];
-	double ref_dct[bs][bs];
-	double cmp_dct[bs][bs];
 	double sub_mat[bs][bs];
 	double distance = 0.0;
 	double lambda = 0.82;
-
-	// obtain regarding DCT transformation matrix
-	// get_dct_matrixes (bs, dct_trans, dct_trans_t);
 
 	// subtract 128 for DCT transformation
 	shift_values (bs, ref_block, ref_mat);
 	shift_values (bs, cmp_block, cmp_mat);
 
 	// perform DCT on reference block by two matrix multiplications
-	// matrixmul (bs, dct_trans, ref_mat, dct_tmp);
-	// matrixmul (bs, dct_tmp, dct_trans_t, ref_dct);
 	dct_2d (bs, ref_mat);
 
 	// perform DCT on compare block by two matrix multiplications
-	// matrixmul (bs, dct_trans, cmp_mat, dct_tmp);
-	// matrixmul (bs, dct_tmp, dct_trans_t, cmp_dct);
 	dct_2d (bs, cmp_mat);
 
 	// perform thresholding on reference block
