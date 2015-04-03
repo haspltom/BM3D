@@ -301,6 +301,20 @@ void matrixmul (int const bs, double const m1[bs][bs], double const m2[bs][bs], 
 	}
 }
 
+void dct_1d (int const len, double arr[len]) {
+	int i, j;
+	double sum = 0.0;
+	double tmp[len];
+
+	for (j=0; j<len; ++j) {
+		for (i=0; i<len; ++i) {
+			sum += arr[i] * (cos((PI/len)*(i+0.5)*j));
+		}
+		tmp[j] = sum;
+		sum = 0.0;
+	}
+}
+
 void hard_threshold (int const bs, double mat[bs][bs], double const lambda, int const std_dev) {
 	int i, j;
 	double threshold = lambda * (double)std_dev * sqrt(2*log(bs*bs));
@@ -583,6 +597,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// perform actual denoising of the actual block group (regarding to one ref_block)
+	printf ("[INFO] ... launch denoising...\n");
 
 	// hard thresholding
 
