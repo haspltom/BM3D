@@ -9,6 +9,7 @@
 #include "../utils/utils.h"
 #include "bm3d.h"
 
+//------------ METHODS FOR COLORSPACE CONVERSION ------------
 // function that make the coversion from RGB to YUV
 void rgb2yuv (png_img* img) {
 	int i, j, y, u, v, r, g, b;
@@ -39,6 +40,38 @@ void rgb2yuv (png_img* img) {
 	}
 }
 
+// function that make the coversion from YUV to RGB
+void yuv2rgb (png_img* img) {
+	int i, j, y, u, v, r, g, b;
+	png_byte* row;
+	png_byte* tmp;
+
+	for (j=0; j<img->height; ++j) {
+		row = img->data[j];
+
+		for (i=0; i<img->width; ++i) {
+			tmp = &(row[i*3]);
+
+			// extract YUV values
+			y = tmp[0];
+			u = tmp[1] - 128;
+			v = tmp[2] - 128;
+			
+			// convert pixel elements
+			r = limit (y + 1.402*v);
+			g = limit (y - 0.3441*u - 0.7141*v);
+			b = limit (y + 1.772*u);
+			
+			// write back YUV values
+			tmp[0] = r;
+			tmp[1] = g;
+			tmp[2] = b;
+		}
+	}
+}
+
+
+//------------ METHODS FOR GENERAL PURPOSE ------------
 // delivers a block structure
 int new_block_struct (int const bs, block_t* block) {
 	int i;
@@ -92,6 +125,8 @@ void print_block (FILE* fd, block_t const block) {
 	}
 }
 
+
+//------------ METHODS FOR BLOCK MATCHING ------------
 // picks a block out of a given image
 int get_block (png_img* img,				// input image
 					int const channel, 		// number of channels (for controlling reasons)
@@ -255,7 +290,7 @@ int print_list (list_t const list) {
 	return 0;
 }
 
-void free_group (group_t* group){
+void free_group (group_t* group) {
 	node_t* tmp = *group;
 
 	while (*group != NULL) {
@@ -311,7 +346,7 @@ void dct_2d (int const len, double arr[len][len]) {
 
 void hard_threshold (int const bs, double mat[bs][bs], double const lambda, int const std_dev) {
 	int i, j;
-	double threshold = lambda * (double)std_dev * sqrt(2*log(bs*bs));
+	double threshold = lambda * (double)std_dev * sqrt(2.0*log(bs*bs));
 	
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
@@ -388,34 +423,67 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const std
 	return distance;
 }
 
-// function that make the coversion from YUV to RGB
-void yuv2rgb (png_img* img) {
-	int i, j, y, u, v, r, g, b;
-	png_byte* row;
-	png_byte* tmp;
 
-	for (j=0; j<img->height; ++j) {
-		row = img->data[j];
+//------------ METHODS FOR DENOISING ------------
+node_t* get_previous_block (group_t group, node_t* block) {
+	node_t* prev = group;
 
-		for (i=0; i<img->width; ++i) {
-			tmp = &(row[i*3]);
-
-			// extract YUV values
-			y = tmp[0];
-			u = tmp[1] - 128;
-			v = tmp[2] - 128;
-			
-			// convert pixel elements
-			r = limit (y + 1.402*v);
-			g = limit (y - 0.3441*u - 0.7141*v);
-			b = limit (y + 1.772*u);
-			
-			// write back YUV values
-			tmp[0] = r;
-			tmp[1] = g;
-			tmp[2] = b;
-		}
+	while ((prev != NULL) && (prev->next != block)) {
+		prev = prev->next;
 	}
+
+	return prev;
+}
+
+int trim_group (group_t* group, unsigned int max_blocks) {
+	node_t* tmp_block = *group;
+	node_t* prev;
+	unsigned int diff = group_length(group) - max_blocks;;
+	int i;
+
+	if (group_length(group) <= max_blocks) {
+		return 0;
+	}
+
+	// go to the end of the group
+	while (tmp_block != NULL) {
+		prev = tmp_block;
+		tmp_block = tmp_block->next;
+	}
+
+	// delete obsolete blocks
+	while (diff > 0) {
+		tmp_block = prev;
+		prev = get_previous_block (*group, tmp_block);
+
+		for (i=0; i<tmp_block->block.block_size; ++i) {
+			free (tmp_block->block.data[i]);
+		}
+
+		free (tmp_block->block.data);
+		free (tmp_block);
+		tmp_block = NULL;
+		prev->next = NULL;
+
+		--diff;
+	}
+
+	return 0;
+}
+
+int trim_list (list_t* list, unsigned int const max_blocks) {
+	group_node_t* tmp = *list;
+
+	// go through all groups
+	while (tmp->next != NULL) {
+		if (trim_group(&tmp->group, max_blocks) != 0) {
+			return 1;
+		}
+
+		tmp = tmp->next;
+	}
+
+	return 0;
 }
 
 int bm3d (char* const infile, 			// name of input file
@@ -557,9 +625,9 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
-	if (print_list(list) != 0) {
-		return 1;
-	}
+	// if (print_list(list) != 0) {
+	// 	return 1;
+	// }
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
@@ -582,6 +650,16 @@ int bm3d (char* const infile, 			// name of input file
 
 	// perform actual denoising of the actual block group (regarding to one ref_block)
 	printf ("[INFO] ... launch denoising...\n");
+
+	// trim groups to maximal number of blocks
+	if (trim_list(&list, max_blocks) != 0) {
+		return 1;
+	}
+
+	if (print_list(list) != 0) {
+		return 1;
+	}
+
 
 	// hard thresholding
 
