@@ -344,6 +344,46 @@ void dct_2d (int const len, double arr[len][len]) {
 	}
 }
 
+void dct_3d (int const len, int const z, double arr[len][len][z]) {
+	int i, j, k, l, m, n;
+	double sum, ai, aj, ak;
+	double tmp[len][len][z];		// dct result
+	double fac;
+
+	for (k=0; k<z; ++k) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				ai = (i == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
+				aj = (j == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
+				ak = (k == 0) ? 1.0/sqrt((double)z) : sqrt(2.0/(double)z);
+
+				for (n=0; n<z; ++n) {
+					for (m=0; m<len; ++m) {
+						for (l=0; l<len; ++l) {
+							fac = cos((PI/(double)z)*((double)n+0.5)*(double)k) * cos((PI/(double)len)*((double)m+0.5)*(double)j) * cos((PI/(double)len)*((double)l+0.5)*(double)i);
+							sum += arr[n][m][l] * fac;
+						}
+					}
+				}
+				tmp[k][j][i] = ai * aj * ak * sum;
+				if (k==0 && j==0 && i==0) printf ("sum: %f\n", sum);
+				if (k==0 && j==0 && i==0) printf ("ai: %f\naj: %f\nak: %f\n", ai, aj, ak);
+				if (k==0 && j==0 && i==0) printf ("product: %f\n", tmp[k][j][i]);
+				sum = 0.0;
+			}
+		}
+	}
+
+	// write back to original matrix
+	for (k=0; k<z; ++k) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				arr[k][j][i] = tmp[k][j][i];
+			}
+		}
+	}
+}
+
 void hard_threshold (int const bs, double mat[bs][bs], double const lambda, int const std_dev) {
 	int i, j;
 	double threshold = lambda * (double)std_dev * sqrt(2.0*log(bs*bs));
@@ -483,6 +523,15 @@ int trim_list (list_t* list, unsigned int const max_blocks) {
 		tmp = tmp->next;
 	}
 
+	return 0;
+}
+
+int determine_estimates (list_t* list) {
+	// build 3D arrays from groups
+	// perform 3d DCT
+	// perform HT
+	// calculate weights
+	// probably need more variables in interface
 	return 0;
 }
 
@@ -656,12 +705,14 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	if (print_list(list) != 0) {
-		return 1;
-	}
-
+	// if (print_list(list) != 0) {
+	// 	return 1;
+	// }
 
 	// hard thresholding
+	if (determine_estimates(&list) != 0) {
+		return 1;
+	}
 
 	// local estimates
 
