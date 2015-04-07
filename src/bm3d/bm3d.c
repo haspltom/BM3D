@@ -344,10 +344,10 @@ void dct_2d (int const len, double arr[len][len]) {
 	}
 }
 
-void dct_3d (int const len, int const z, double arr[len][len][z]) {
+void dct_3d (int const len, int const z, double arr[z][len][len]) {
 	int i, j, k, l, m, n;
 	double sum, ai, aj, ak;
-	double tmp[len][len][z];		// dct result
+	double tmp[z][len][len];		// dct result
 	double fac;
 
 	for (k=0; k<z; ++k) {
@@ -366,9 +366,6 @@ void dct_3d (int const len, int const z, double arr[len][len][z]) {
 					}
 				}
 				tmp[k][j][i] = ai * aj * ak * sum;
-				if (k==0 && j==0 && i==0) printf ("sum: %f\n", sum);
-				if (k==0 && j==0 && i==0) printf ("ai: %f\naj: %f\nak: %f\n", ai, aj, ak);
-				if (k==0 && j==0 && i==0) printf ("product: %f\n", tmp[k][j][i]);
 				sum = 0.0;
 			}
 		}
@@ -526,8 +523,53 @@ int trim_list (list_t* list, unsigned int const max_blocks) {
 	return 0;
 }
 
-int determine_estimates (list_t* list) {
+void group2array (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
+	node_t* tmp = *group;
+	int i, j, k;
+
+	while (tmp != NULL) {
+		for (k=0; k<z; ++k) {
+			for (j=0; j<len; ++j) {
+				for (i=0; i<len; ++i) {
+					//TODO massive prblem with indices!!!!!!!!!!!!!!!!!
+					arr[k][j][i] = tmp->block.data[j][i];
+				}
+			}
+			tmp = tmp->next;
+		}
+	}
+}
+
+int determine_estimates (list_t const list) {
+	group_node_t* tmp = list;
+	node_t* group;
+	unsigned int z;
+	int i, j, k;
+
 	// build 3D arrays from groups
+	while (tmp != NULL) {
+		group = tmp->group;
+		z = group_length (&group);
+		unsigned int len = group->block.block_size;
+		double arr[z][len][len];
+
+		group2array (&group, len, z, arr);
+		dct_3d (len, z, arr);
+
+		// for (k=0; k<z; ++k) {
+		// 	for (j=0; j<len; ++j) {
+		// 		for (i=0; i<len; ++i) {
+		// 			printf ("%f ", arr[k][j][i]);
+		// 		}
+		// 		printf ("\n");
+		// 	}
+		// 	printf ("\n\n");
+		// }
+		// printf ("\n\n\n");
+
+		tmp = tmp->next;
+	}
+
 	// perform 3d DCT
 	// perform HT
 	// calculate weights
@@ -575,6 +617,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// print status information on the console
+	printf ("[INFO] ... .............................................\n");
 	printf ("[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
 	printf ("[INFO] ... block size: %d\n", block_size);
 	printf ("[INFO] ... block step: %d\n", block_step);
@@ -582,8 +625,10 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... maximum number of blocks: %d\n", max_blocks);
 	printf ("[INFO] ... horizontal search window size: %d\n", h_search);
 	printf ("[INFO] ... vertical search window size: %d\n", v_search);
+	printf ("[INFO] ... .............................................\n\n");
 
 	// convert colorspace from RGB to YUV
+	printf ("[INFO] ... launch of color conversion...\n");
 	rgb2yuv (&img);
 
 	// set filename for noisy yuv output image
@@ -596,6 +641,8 @@ int bm3d (char* const infile, 			// name of input file
 	if (png_write(&img, outfile) != 0) {
 		return 1;
 	}
+
+	printf ("[INFO] ... end of color conversion...\n\n");
 
 	// allocate block memory
 	if (new_block_struct(block_size, &ref_block) != 0) {
@@ -613,7 +660,7 @@ int bm3d (char* const infile, 			// name of input file
 		- next pixel
 	*/
 
-	printf ("[INFO] ... launch block-matching...\n");
+	printf ("[INFO] ... launch of block-matching...\n");
 	bm_start = clock();
 
 	// compare blocks according to the sliding-window manner
@@ -681,10 +728,6 @@ int bm3d (char* const infile, 			// name of input file
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 
-	printf ("[INFO] ... finished block-matching...\n");
-	printf ("[INFO] ... number of groups in list: %d\n", list_length(&list));
-	printf ("[INFO] ... elapsed time: %f\n\n", time);
-
 	// set filename for txt-file of groups
 	if (get_output_filename (outfile, "bms/", "block_matching_statistics", "csv", block_size) != 0) {
 		generate_error ("Unable to process output filename...");
@@ -697,10 +740,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	printf ("[INFO] ... end of block-matching...\n");
+	printf ("[INFO] ... number of groups in list: %d\n", list_length(&list));
+	printf ("[INFO] ... elapsed time: %f\n\n", time);
+
 	// perform actual denoising of the actual block group (regarding to one ref_block)
-	printf ("[INFO] ... launch denoising...\n");
+	printf ("[INFO] ... launch of denoising...\n");
 
 	// trim groups to maximal number of blocks
+	printf ("[INFO] ... trimming blocks to maximum size...\n");
 	if (trim_list(&list, max_blocks) != 0) {
 		return 1;
 	}
@@ -709,8 +757,9 @@ int bm3d (char* const infile, 			// name of input file
 	// 	return 1;
 	// }
 
+	printf ("[INFO] ... determining local estimates...\n");
 	// hard thresholding
-	if (determine_estimates(&list) != 0) {
+	if (determine_estimates(list) != 0) {
 		return 1;
 	}
 
@@ -719,8 +768,10 @@ int bm3d (char* const infile, 			// name of input file
 	// Wiener filtering
 
 	// final estimates
+	printf ("[INFO] ... end of denoising...\n\n");
 
 	// convert colorspace from YUV back to RGB
+	printf ("[INFO] ... launch of color conversion...\n");
 	yuv2rgb (&img);
 
 	// set filename for denoised rgb output image
@@ -733,6 +784,8 @@ int bm3d (char* const infile, 			// name of input file
 	if (png_write(&img, outfile) != 0) {
 		return 1;
 	}
+
+	printf ("[INFO] ... end of color conversion...\n\n");
 
 	// free allocated memory
 	png_free_mem (&img);
