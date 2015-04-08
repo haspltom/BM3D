@@ -1,6 +1,6 @@
 CC      = clang
 BIN     = noising param_gen bm3d
-DIRS    = objdir rgbdir yuvdir grpdir resdir bmsdir
+DIRS    = objdir rgbdir yuvdir grpdir resdir bmsdir dnsdir
 SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
@@ -12,6 +12,7 @@ IMGDIR  = img
 RESDIR  = res
 GRPDIR  = grp
 BMSDIR  = bms
+DNSDIR  = dns
 OBJ     := $(subst .$(EXT),.o,$(SRC))
 OBJ     := $(addprefix $(OBJDIR)/, $(OBJ))
  
@@ -34,6 +35,9 @@ resdir:
 
 bmsdir:
 	$(MKDIR) -p $(BMSDIR)
+
+dnsdir:
+	$(MKDIR) -p $(DNSDIR)
 
 noising: $(OBJDIR)/noising.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o
 	@echo "Link $< ..."
@@ -84,4 +88,4 @@ $(OBJDIR)/main.o: $(SRCDIR)/main.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
  
 clean:
-	rm -r noising param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(GRPDIR) $(BMSDIR)
+	rm -r noising param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(GRPDIR) $(BMSDIR) $(DNSDIR)
