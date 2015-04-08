@@ -553,23 +553,49 @@ void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double
 	}
 }
 
+double get_weight (int const bs, int const z, double mat[z][bs][bs]) {
+	int i, j, k;
+	int count = 0;
+
+	for (k=0; k<z; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<bs; ++i) {
+				if (mat[k][j][i] != 0.0) {
+					++count;
+				}
+			}
+		}
+	}
+
+	return (count >= 1) ? 1.0/(double)count : 1.0;
+}
+
 int determine_estimates (list_t const list, int const sigma) {
 	group_node_t* tmp = list;
 	node_t* group;
 	unsigned int z;
 	// int i, j, k;
 	double th_3d = 0.75;
+	double weight = 0.0;
 
-	// build 3D arrays from groups
 	while (tmp != NULL) {
 		group = tmp->group;
 		z = group_length (&group);
 		unsigned int len = group->block.block_size;
 		double arr[z][len][len];
 
+		// build a 3D-array from the actual group
 		group2array (&group, len, z, arr);
+
+		// perform 3D-DCT
 		dct_3d (len, z, arr);
+
+		// perform 3D-hard-thresholding
 		hard_threshold_3d (len, z, arr, th_3d, sigma);
+
+		// calculate the weight for the actual block
+		weight = get_weight (len, z, arr);
+		// printf ("weight: %f\n", weight);
 
 		// for (k=0; k<z; ++k) {
 		// 	for (j=0; j<len; ++j) {
@@ -585,9 +611,6 @@ int determine_estimates (list_t const list, int const sigma) {
 		tmp = tmp->next;
 	}
 
-	// perform 3d DCT
-	// perform HT
-	// calculate weights
 	// probably need more variables in interface
 	return 0;
 }
