@@ -381,13 +381,13 @@ void dct_3d (int const len, int const z, double arr[z][len][len]) {
 	}
 }
 
-void hard_threshold (int const bs, double mat[bs][bs], double const lambda, int const std_dev) {
+void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, int const sigma) {
 	int i, j;
-	double threshold = lambda * (double)std_dev * sqrt(2.0*log(bs*bs));
+	double threshold = th_2d * (double)sigma * sqrt(2.0*log(bs*bs));
 	
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
-			mat[i][j] = (abs(mat[i][j])>threshold) ? mat[i][j] : 0.0;
+			mat[j][i] = (abs(mat[j][i])>threshold) ? mat[j][i] : 0.0;
 		}
 	}
 }
@@ -427,13 +427,13 @@ double l2_norm (int const bs, double const mat[bs][bs]) {
 
 
 // performs a check, whether two given blocks are similar
-double get_block_distance (block_t* ref_block, block_t* cmp_block, int const std_dev) {
+double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sigma) {
 	int const bs = ref_block->block_size;
 	double ref_mat[bs][bs];
 	double cmp_mat[bs][bs];
 	double sub_mat[bs][bs];
 	double distance = 0.0;
-	double lambda = 0.82;
+	double th_2d = 0.82;
 
 	// subtract 128 for DCT transformation
 	shift_values (bs, ref_block, ref_mat);
@@ -446,10 +446,10 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const std
 	dct_2d (bs, cmp_mat);
 
 	// perform thresholding on reference block
-	hard_threshold (bs, ref_mat, lambda, std_dev);
+	hard_threshold_2d (bs, ref_mat, th_2d, sigma);
 
 	// perform thresholding on compare block
-	hard_threshold (bs, cmp_mat, lambda, std_dev);
+	hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
 
 	// subtract compare block from reference block
 	subtract_blocks (bs, ref_mat, cmp_mat, sub_mat);
@@ -540,11 +540,25 @@ void group2array (group_t* group, unsigned int len, unsigned const z, double arr
 	}
 }
 
-int determine_estimates (list_t const list) {
+void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
+	int i, j, k;
+	double threshold = th_3d * (double)sigma * sqrt(2.0*log(bs*bs));
+	
+	for (k=0; k<z; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<bs; ++i) {
+				mat[k][j][i] = (abs(mat[k][j][i])>threshold) ? mat[k][j][i] : 0.0;
+			}
+		}
+	}
+}
+
+int determine_estimates (list_t const list, int const sigma) {
 	group_node_t* tmp = list;
 	node_t* group;
 	unsigned int z;
-	int i, j, k;
+	// int i, j, k;
+	double th_3d = 0.75;
 
 	// build 3D arrays from groups
 	while (tmp != NULL) {
@@ -555,6 +569,7 @@ int determine_estimates (list_t const list) {
 
 		group2array (&group, len, z, arr);
 		dct_3d (len, z, arr);
+		hard_threshold_3d (len, z, arr, th_3d, sigma);
 
 		// for (k=0; k<z; ++k) {
 		// 	for (j=0; j<len; ++j) {
@@ -580,7 +595,7 @@ int determine_estimates (list_t const list) {
 int bm3d (char* const infile, 			// name of input file
 			 int const block_size, 			// size of internal processed blocks
 			 int const block_step, 			// step size between blocks
-			 int const std_dev, 				// standard deviation of noise
+			 int const sigma, 				// standard deviation of noise
 			 int const max_blocks,			// maximum number of block in one 3D array
 			 int const h_search,				// horizontal width of search window
 			 int const v_search) { 			// vertical width of search window
@@ -621,7 +636,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
 	printf ("[INFO] ... block size: %d\n", block_size);
 	printf ("[INFO] ... block step: %d\n", block_step);
-	printf ("[INFO] ... sigma: %d\n", std_dev);
+	printf ("[INFO] ... sigma: %d\n", sigma);
 	printf ("[INFO] ... maximum number of blocks: %d\n", max_blocks);
 	printf ("[INFO] ... horizontal search window size: %d\n", h_search);
 	printf ("[INFO] ... vertical search window size: %d\n", v_search);
@@ -632,7 +647,7 @@ int bm3d (char* const infile, 			// name of input file
 	rgb2yuv (&img);
 
 	// set filename for noisy yuv output image
-	if (get_output_filename (outfile, "img/yuv/", "noisy_yuv", "png", std_dev) != 0) {
+	if (get_output_filename (outfile, "img/yuv/", "noisy_yuv", "png", sigma) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
@@ -699,7 +714,7 @@ int bm3d (char* const infile, 			// name of input file
 							// printf ("(%d/%d)\n", k, l);
 
 							// compare blocks for similarity
-							d = get_block_distance (&ref_block, &cmp_block, std_dev);
+							d = get_block_distance (&ref_block, &cmp_block, sigma);
 							
 							// decide whether block similarity is sufficient
 							if (d < tau_match*255) {
@@ -759,7 +774,7 @@ int bm3d (char* const infile, 			// name of input file
 
 	printf ("[INFO] ... determining local estimates...\n");
 	// hard thresholding
-	if (determine_estimates(list) != 0) {
+	if (determine_estimates(list, sigma) != 0) {
 		return 1;
 	}
 
@@ -775,7 +790,7 @@ int bm3d (char* const infile, 			// name of input file
 	yuv2rgb (&img);
 
 	// set filename for denoised rgb output image
-	if (get_output_filename (outfile, "img/rgb/", "denoised_rgb", "png", std_dev) != 0) {
+	if (get_output_filename (outfile, "img/rgb/", "denoised_rgb", "png", sigma) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
