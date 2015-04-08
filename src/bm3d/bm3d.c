@@ -250,7 +250,7 @@ unsigned int group_length (group_t* group){
 	return len;
 }
 
-int print_list (list_t const list) {
+int print_list (list_t const list, char* const path, char* const prefix) {
 	FILE* fd = 0;
 	group_node_t* tmp = list;
 	node_t* tmp_block;
@@ -261,7 +261,7 @@ int print_list (list_t const list) {
 
 	while (tmp != NULL) {
 		//obtain output filename
-		if (get_output_filename (groupname, "grp/", "group", "txt", ++count) != 0) {
+		if (get_output_filename (groupname, path, prefix, "txt", ++count) != 0) {
 			generate_error ("Unable to process output filename for group...");
 			return 1;
 		}
@@ -572,12 +572,33 @@ double get_weight (int const bs, int const z, double mat[z][bs][bs]) {
 	return (count >= 1) ? 1.0/(double)count : 1.0;
 }
 
+void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], char* const header) {
+	int i, j, k;
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", header);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (k=0; k<z; ++k) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				fprintf (fd, "%f ", arr[k][j][i]);
+			}
+			fprintf (fd, "\n");
+		}
+		fprintf (fd, "\n\n");
+	}
+	fprintf (fd, "\n\n\n");
+}
+
 int determine_estimates (list_t const list, int const sigma) {
+	FILE* fd = 0;
+	char outfile[40];
 	group_node_t* tmp = list;
 	node_t* group;
 	unsigned int z;
-	// int i, j, k;
 	double th_3d = 0.75;
+	int count = 0;
 
 	while (tmp != NULL) {
 		group = tmp->group;
@@ -585,30 +606,43 @@ int determine_estimates (list_t const list, int const sigma) {
 		unsigned int len = group->block.block_size;
 		double arr[z][len][len];
 
+		//obtain output filename
+		if (get_output_filename (outfile, "dns/", "group", "txt", ++count) != 0) {
+			generate_error ("Unable to process output filename for group...");
+			return 1;
+		}
+
+		fd = fopen (outfile, "a");
+		
+		if (fd == NULL) {
+			generate_error ("Unable to open file for printing group...");
+			return 1;
+		}
+
 		// build a 3D-array from the actual group
 		group2array (&group, len, z, arr);
+
+		// append extracted group to log-file
+		array2file (fd, len, z, arr, "extracted group");
 
 		// perform 3D-DCT
 		dct_3d (len, z, arr);
 
+		// append transformed group to log-file
+		array2file (fd, len, z, arr, "group after 3D-DCT transformation");
+
 		// perform 3D-hard-thresholding
 		hard_threshold_3d (len, z, arr, th_3d, sigma);
+
+		// append thresholded group to log-file
+		array2file (fd, len, z, arr, "group after 3D-hard-thresholding");
 
 		// calculate the weight for the actual block
 		tmp->weight = get_weight (len, z, arr);	
 
-		// for (k=0; k<z; ++k) {
-		// 	for (j=0; j<len; ++j) {
-		// 		for (i=0; i<len; ++i) {
-		// 			printf ("%f ", arr[k][j][i]);
-		// 		}
-		// 		printf ("\n");
-		// 	}
-		// 	printf ("\n\n");
-		// }
-		// printf ("\n\n\n");
-
 		tmp = tmp->next;
+
+		fclose (fd);
 	}
 
 	// probably need more variables in interface
@@ -759,9 +793,9 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
-	// if (print_list(list) != 0) {
-	// 	return 1;
-	// }
+	if (print_list(list, "grp/", "group_full") != 0) {
+		return 1;
+	}
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
@@ -791,15 +825,19 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	if (print_list(list, "grp/", "group_trim") != 0) {
+		return 1;
+	}
+
 	printf ("[INFO] ... determining local estimates...\n");
 	// hard thresholding
 	if (determine_estimates(list, sigma) != 0) {
 		return 1;
 	}
 
-	if (print_list(list) != 0) {
-		return 1;
-	}
+	// if (print_list(list) != 0) {
+	// 	return 1;
+	// }
 
 	// local estimates
 
