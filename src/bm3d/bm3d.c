@@ -383,6 +383,46 @@ void dct_3d (int const len, int const z, double arr[z][len][len]) {
 	}
 }
 
+void idct_3d (int const len, int const z, double arr[z][len][len]) {
+	int i, j, k, l, m, n;
+	double sum, al, am, an = 0.0;
+	double tmp[z][len][len];		// dct result
+	double fac;
+
+	for (k=0; k<z; ++k) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				for (n=0; n<z; ++n) {
+					for (m=0; m<len; ++m) {
+						for (l=0; l<len; ++l) {
+							al = (l == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
+							am = (m == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
+							an = (n == 0) ? 1.0/sqrt((double)z) : sqrt(2.0/(double)z);
+
+							fac = cos((PI/(double)len)*((double)j+0.5)*(double)m) * cos((PI/(double)len)*((double)i+0.5)*(double)l) * cos((PI/(double)z)*((double)k+0.5)*(double)n);
+							sum += arr[n][m][l] * al * am * an * fac;
+						}
+					}
+				}
+				tmp[k][j][i] = sum;
+				// if (k==0 && j==0 && i==0) printf ("sum: %f\n", sum);
+				// if (k==0 && j==0 && i==0) printf ("ai: %f\naj: %f\nak: %f\n", ai, aj, ak);
+				// if (k==0 && j==0 && i==0) printf ("product: %f\n", tmp[k][j][i]);
+				sum = 0.0;
+			}
+		}
+	}
+
+	// write back to original matrix
+	for (k=0; k<z; ++k) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				arr[k][j][i] = tmp[k][j][i];
+			}
+		}
+	}
+}
+
 void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, int const sigma) {
 	int i, j;
 	double threshold = th_2d * (double)sigma * sqrt(2.0*log(bs*bs));
@@ -655,6 +695,12 @@ int determine_estimates (list_t const list, int const sigma) {
 		// calculate the weight for the actual block
 		tmp->weight = get_weight (len, z, arr);	
 
+		// perform 3D-IDCT
+		idct_3d (len, z, arr);
+
+		// append inverse-transformed group to log-file
+		array2file (fd, len, z, arr, "group after 3D-IDCT transformation");
+
 		// write array data back to a list node
 		array2group (&group, len, z, arr);
 
@@ -848,7 +894,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ... determining local estimates...\n");
-	// hard thresholding
+	// determine local estimates
 	if (determine_estimates(list, sigma) != 0) {
 		return 1;
 	}
@@ -857,7 +903,10 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// local estimates
+	// aggregation
+	// if (aggregate(list) != 0) {
+	// 	return 1;
+	// }
 
 	// Wiener filtering
 
