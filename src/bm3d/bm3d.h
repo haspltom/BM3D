@@ -5,16 +5,16 @@
 
 // structure of one block
 typedef struct block {
-	int block_size;
-	double** data;
-	int x;
-	int y;
+	int block_size;									// block size
+	double** data;										// pixel values
+	int x;												// horizontal position of the block center
+	int y;												// vertical position of the block center
 } block_t;
 
 // list node
 typedef struct block_node {
-	block_t block;
-	double distance;
+	block_t block;										// block data
+	double distance;									// block distance to the reference block
 	struct block_node* next;
 } node_t;
 
@@ -23,7 +23,8 @@ typedef node_t* group_t;
 
 // node of a list of groups
 typedef struct group_node {
-	group_t group;
+	group_t group;										// list of blocks for one reference block
+	double weight;										// weight for local estimates after hard thresholding
 	struct group_node* next;
 } group_node_t;
 

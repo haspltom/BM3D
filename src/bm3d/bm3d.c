@@ -164,6 +164,7 @@ int append_group (list_t* list, group_t* group) {
 	
 	new_node = (group_node_t*)malloc(sizeof(group_node_t));
 	new_node->group = *group;
+	new_node->weight = 0.0;
 	new_node->next = 0;
 
 	if (tmp != NULL) {
@@ -274,6 +275,7 @@ int print_list (list_t const list) {
 
 		tmp_block = tmp->group;
 		fprintf (fd, "[INFO} ... nr of blocks in group: %d\n\n", group_length(&tmp_block));
+		fprintf (fd, "[INFO} ... weight of group: %f\n", tmp->weight);
 		fprintf (fd, "[INFO} ... reference block...\n");
 
 		while (tmp_block != NULL) {
@@ -576,7 +578,6 @@ int determine_estimates (list_t const list, int const sigma) {
 	unsigned int z;
 	// int i, j, k;
 	double th_3d = 0.75;
-	double weight = 0.0;
 
 	while (tmp != NULL) {
 		group = tmp->group;
@@ -594,8 +595,7 @@ int determine_estimates (list_t const list, int const sigma) {
 		hard_threshold_3d (len, z, arr, th_3d, sigma);
 
 		// calculate the weight for the actual block
-		weight = get_weight (len, z, arr);
-		// printf ("weight: %f\n", weight);
+		tmp->weight = get_weight (len, z, arr);	
 
 		// for (k=0; k<z; ++k) {
 		// 	for (j=0; j<len; ++j) {
@@ -791,13 +791,13 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// if (print_list(list) != 0) {
-	// 	return 1;
-	// }
-
 	printf ("[INFO] ... determining local estimates...\n");
 	// hard thresholding
 	if (determine_estimates(list, sigma) != 0) {
+		return 1;
+	}
+
+	if (print_list(list) != 0) {
 		return 1;
 	}
 
