@@ -533,8 +533,23 @@ void group2array (group_t* group, unsigned int len, unsigned const z, double arr
 		for (k=0; k<z; ++k) {
 			for (j=0; j<len; ++j) {
 				for (i=0; i<len; ++i) {
-					//TODO massive prblem with indices!!!!!!!!!!!!!!!!!
 					arr[k][j][i] = tmp->block.data[j][i];
+				}
+			}
+			tmp = tmp->next;
+		}
+	}
+}
+
+void array2group (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
+	node_t* tmp = *group;
+	int i, j, k;
+
+	while (tmp != NULL) {
+		for (k=0; k<z; ++k) {
+			for (j=0; j<len; ++j) {
+				for (i=0; i<len; ++i) {
+					tmp->block.data[j][i] = arr[k][j][i];
 				}
 			}
 			tmp = tmp->next;
@@ -639,6 +654,9 @@ int determine_estimates (list_t const list, int const sigma) {
 
 		// calculate the weight for the actual block
 		tmp->weight = get_weight (len, z, arr);	
+
+		// write array data back to a list node
+		array2group (&group, len, z, arr);
 
 		tmp = tmp->next;
 
@@ -793,7 +811,7 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
-	if (print_list(list, "grp/", "group_full") != 0) {
+	if (print_list(list, "grp/org/", "group") != 0) {
 		return 1;
 	}
 
@@ -825,7 +843,7 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	if (print_list(list, "grp/", "group_trim") != 0) {
+	if (print_list(list, "grp/trm/", "group") != 0) {
 		return 1;
 	}
 
@@ -835,9 +853,9 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// if (print_list(list) != 0) {
-	// 	return 1;
-	// }
+	if (print_list(list, "grp/est/", "group") != 0) {
+		return 1;
+	}
 
 	// local estimates
 
