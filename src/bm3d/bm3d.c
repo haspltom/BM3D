@@ -652,7 +652,7 @@ int determine_estimates (list_t const list, int const sigma) {
 	group_node_t* tmp = list;
 	node_t* group;
 	unsigned int z;
-	double th_3d = 0.75;
+	double th_3d = 0.15;
 	int count = 0;
 
 	while (tmp != NULL) {
