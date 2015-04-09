@@ -152,8 +152,8 @@ int get_block (png_img* img,				// input image
 		}
 	}
 
-	block->x = x;
-	block->y = y;
+	block->x = x + (block->block_size/2);
+	block->y = y + (block->block_size/2);
 	
 	return 0;
 }
@@ -257,7 +257,7 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 	char groupname[40];
 	int count = 0;
 
-	printf ("[INFO} ... printing groups to file...\n");
+	printf ("[INFO] ... printing groups to file...\n");
 
 	while (tmp != NULL) {
 		//obtain output filename
@@ -274,13 +274,19 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 		}
 
 		tmp_block = tmp->group;
-		fprintf (fd, "[INFO} ... nr of blocks in group: %d\n\n", group_length(&tmp_block));
-		fprintf (fd, "[INFO} ... weight of group: %f\n", tmp->weight);
-		fprintf (fd, "[INFO} ... reference block...\n");
+		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
+
+		if (!strcmp(path, "grp/est/")) {
+			fprintf (fd, "[INFO] ... weight of group: %f\n", tmp->weight);
+		}
+
+		fprintf (fd, "\n");
+		fprintf (fd, "[INFO] ... reference block...\n");
 
 		while (tmp_block != NULL) {
 			print_block (fd, tmp_block->block);
-			fprintf (fd, "[INFO} ... distance to reference block: %f\n\n", tmp_block->distance);
+			fprintf (fd, "[INFO] ... block position: (%d/%d)\n", tmp_block->block.x, tmp_block->block.y);
+			fprintf (fd, "[INFO] ... distance to reference block: %f\n\n", tmp_block->distance);
 			tmp_block = tmp_block->next;
 		}
 
@@ -713,6 +719,36 @@ int determine_estimates (list_t const list, int const sigma) {
 	return 0;
 }
 
+int aggregate(png_img* img, list_t* list) {
+	group_node_t* tmp = *list;
+	node_t* group;
+	block_t* block;
+	double w;							// weight of actual processed group
+	unsigned int ebuff[img->width][img->height];
+	unsigned int wbuff[img->width][img->height];
+	int i, j;
+
+	printf ("position: (%d/%d)\n", tmp->group->block.x, tmp->group->block.x);
+
+	while (tmp != NULL) {
+		group = tmp->group;
+		w = tmp->weight;
+		block = &group->block;
+		// printf ("x,y: %d %d\n", block->x, block->y);
+		
+		// iterate over current block and extract values
+		for (j=0; j<block->block_size; ++j) {
+			for (i=0; i<block->block_size; ++i) {
+
+			}
+		}
+
+		tmp = tmp->next;
+	}
+
+	return 0;
+}
+
 int bm3d (char* const infile, 			// name of input file
 			 int const block_size, 			// size of internal processed blocks
 			 int const block_step, 			// step size between blocks
@@ -720,10 +756,9 @@ int bm3d (char* const infile, 			// name of input file
 			 int const max_blocks,			// maximum number of block in one 3D array
 			 int const h_search,				// horizontal width of search window
 			 int const v_search) { 			// vertical width of search window
-	png_img img;
-	char outfile[40];
-	// double ref_block[block_size][block_size];
-	// double cmp_block[block_size][block_size];
+	png_img img;								// noisy input image
+	png_img est;								// estimate-image after hard-thresholding
+	char outfile[40];							// universally used output-filename
 	block_t ref_block;
 	block_t cmp_block;
 	double d;	// block distance
@@ -904,9 +939,9 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// aggregation
-	// if (aggregate(list) != 0) {
-	// 	return 1;
-	// }
+	if (aggregate(&est, &list) != 0) {
+		return 1;
+	}
 
 	// Wiener filtering
 
