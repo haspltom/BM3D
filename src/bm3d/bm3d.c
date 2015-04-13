@@ -668,7 +668,7 @@ int determine_estimates (list_t const list, int const sigma) {
 		double arr[z][len][len];
 
 		//obtain output filename
-		if (get_output_filename (outfile, "dns/", "group", "txt", ++count) != 0) {
+		if (get_output_filename (outfile, "dns/grp/", "group", "txt", ++count) != 0) {
 			generate_error ("Unable to process output filename for group...");
 			return 1;
 		}
@@ -719,33 +719,109 @@ int determine_estimates (list_t const list, int const sigma) {
 	return 0;
 }
 
+int buffer2file (unsigned int const width, unsigned int const height, double buf[width][height], char* const path, char* const prefix) {
+	FILE* fd = 0;
+	char outfile[40];
+	int i, j;
+
+	//obtain output filename
+	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
+		generate_error ("Unable to process output filename for buffer...");
+		return 1;
+	}
+
+	fd = fopen (outfile, "w");
+	
+	if (fd == NULL) {
+		generate_error ("Unable to open file for printing buffer...");
+		return 1;
+	}
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", prefix);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (j=0; j<height; ++j) {
+		for (i=0; i<width; ++i) {
+			fprintf (fd, "%f ", buf[j][i]);
+		}
+		fprintf (fd, "\n");
+	}
+
+	fclose (fd);
+
+	return 0;
+}
+
 int aggregate(png_img* img, list_t* list) {
 	group_node_t* tmp = *list;
 	node_t* group;
 	block_t* block;
 	double w;							// weight of actual processed group
-	unsigned int ebuff[img->width][img->height];
-	unsigned int wbuff[img->width][img->height];
+	double ebuf[img->width][img->height];
+	double wbuf[img->width][img->height];
 	int i, j;
 
-	printf ("position: (%d/%d)\n", tmp->group->block.x, tmp->group->block.x);
+	printf ("width: %d\nheight: %d\n", img->width, img->height);
 
 	while (tmp != NULL) {
 		group = tmp->group;
 		w = tmp->weight;
-		block = &group->block;
-		// printf ("x,y: %d %d\n", block->x, block->y);
+		// if (block->x==15 && block->y==15) printf ("x,y: %d %d\n", block->x, block->y);
+		// printf ("weight: %f\n", tmp->weight);
 		
-		// iterate over current block and extract values
-		for (j=0; j<block->block_size; ++j) {
-			for (i=0; i<block->block_size; ++i) {
-
+		while (group != NULL) {
+			block = &group->block;
+			printf ("block_size: %d\n", block->block_size);
+			printf ("block_x: %d\n", block->x);
+			printf ("block_y: %d\n", block->y);
+			// iterate over current block and extract values
+			for (j=0; j<block->block_size; ++j) {
+				for (i=0; i<block->block_size; ++i) {
+					// if (block->x==15 && block->y==15) {
+						// printf ("%f ", block->data[j][i]);
+						ebuf[j+(block->y/2)][i+(block->x/2)] += block->data[j][i] * tmp->weight;
+						wbuf[j+(block->y/2)][i+(block->x/2)] += tmp->weight;
+						// ebuf[j][i] += block->data[j][i];
+						// printf ("%f ", ebuf[j][i]);
+					// }
+				}
+				// if (block->x==15 && block->y==15) printf ("\n");
 			}
+			// if (block->x==15 && block->y==15) printf ("\n");
+
+			group = group->next;
 		}
 
 		tmp = tmp->next;
 	}
 
+	if (buffer2file(img->width, img->height, ebuf, "dns/", "ebuf") != 0) {
+		return 1;
+	}	
+	
+	if (buffer2file(img->width, img->height, wbuf, "dns/", "wbuf") != 0) {
+		return 1;
+	}	
+
+	double max = 0.0;
+
+	// determine estimates by dividing ebuf with wbuf
+	for (j=0; j<img->height; ++j) {
+		for (i=0; i<img->width; ++i) {
+			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
+				ebuf[j][i] /= wbuf[j][i];
+				max = (ebuf[j][i] >= max) ? ebuf[j][i] : max;
+			}
+		}
+	}
+
+	printf ("max est: %f\n", max);
+
+	if (buffer2file(img->width, img->height, ebuf, "dns/", "estimates") != 0) {
+		return 1;
+	}	
+	
 	return 0;
 }
 
@@ -757,7 +833,7 @@ int bm3d (char* const infile, 			// name of input file
 			 int const h_search,				// horizontal width of search window
 			 int const v_search) { 			// vertical width of search window
 	png_img img;								// noisy input image
-	png_img est;								// estimate-image after hard-thresholding
+	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
 	block_t ref_block;
 	block_t cmp_block;
@@ -938,8 +1014,10 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	printf ("[INFO] ... aggregating local estimates...\n");
+	printf ("width: %d\nheight: %d\n", img.width, img.height);
 	// aggregation
-	if (aggregate(&est, &list) != 0) {
+	if (aggregate(&img, &list) != 0) {
 		return 1;
 	}
 
