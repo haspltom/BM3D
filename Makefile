@@ -1,6 +1,6 @@
 CC      = clang
 BIN     = noising param_gen bm3d
-DIRS    = objdir rgbdir yuvdir grpdir orgdir trmdir estdir resdir bmsdir dnsdir dnsgrpdir
+DIRS    = objdir rgbdir yuvdir grpdir orgdir trmdir trydir trudir trvdir estdir esydir esudir esvdir resdir bmsdir dnsdir dnsgrpdir
 SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
@@ -36,8 +36,26 @@ orgdir:
 trmdir:
 	$(MKDIR) -p $(GRPDIR)/trm
 
+trydir:
+	$(MKDIR) -p $(GRPDIR)/trm/y
+
+trudir:
+	$(MKDIR) -p $(GRPDIR)/trm/u
+
+trvdir:
+	$(MKDIR) -p $(GRPDIR)/trm/v
+
 estdir:
 	$(MKDIR) -p $(GRPDIR)/est
+
+esydir:
+	$(MKDIR) -p $(GRPDIR)/est/y
+
+esudir:
+	$(MKDIR) -p $(GRPDIR)/est/u
+
+esvdir:
+	$(MKDIR) -p $(GRPDIR)/est/v
 
 resdir:
 	$(MKDIR) -p $(RESDIR)
