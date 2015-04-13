@@ -242,6 +242,36 @@ int append_block (group_t* group, block_t* block, double const distance) {
 	return 0;
 }
 
+int mark_ref_block (png_img* img, block_t* block) {
+	png_byte* row;
+	png_byte* tmp;
+	int i, j;
+	int x = block->x - (block->block_size/2);
+	int y = block->y - (block->block_size/2);
+
+	for (j=0; j<block->block_size; ++j) {
+		row = img->data[j+y];
+
+		for (i=0; i<block->block_size; ++i) {
+			tmp = &(row[(i+x)*3]);
+
+			tmp[0] = 0;
+			tmp[1] = 0;
+			tmp[2] = 0;
+		}
+	}
+
+	return 0;
+}
+
+// int mark_cmp_block (png_img* img, block_t* block) {
+// 	png_byte* row;
+// 	png_byte* tmp;
+// 	int i, j;
+// 
+// 	return 0;
+// }
+
 unsigned int list_length (list_t* list){
 	unsigned int len = 0;
 	group_node_t* tmp = *list;
@@ -970,6 +1000,7 @@ int bm3d (char* const infile, 			// name of input file
 	png_img img;								// noisy input image
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
+	unsigned int count = 0;
 	block_t ref_block;
 	block_t cmp_block;
 	double d;	// block distance
@@ -1069,6 +1100,10 @@ int bm3d (char* const infile, 			// name of input file
 					return 1;
 				}
 
+				if (mark_ref_block (&img, &ref_block) != 0) {
+					return 1;
+				}
+
 				add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
 
 				for (l=0; l<img.height; l=l+block_step) {
@@ -1095,6 +1130,11 @@ int bm3d (char* const infile, 			// name of input file
 									return 1;
 								}
 
+								if (mark_ref_block (&img, &cmp_block) != 0) {
+									return 1;
+								}
+
+
 								add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
 							}
 						}
@@ -1105,6 +1145,19 @@ int bm3d (char* const infile, 			// name of input file
 				if (append_group (&y_list, &group) != 0) {
 					return 1;
 				}
+
+				// write image with marked group in it
+				// set filename for noisy yuv output image
+				if (get_output_filename (outfile, "img/rgb/bks/", "group", "png", ++count) != 0) {
+					generate_error ("Unable to process output filename...");
+					return 1;
+				}
+
+				// write output image
+				if (png_write(&img, outfile) != 0) {
+					return 1;
+				}
+
 
 				group = 0; //EVIL, cause same pointer
 			}
@@ -1139,6 +1192,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... number of groups in list: %d\n", list_length(&y_list));
 	printf ("[INFO] ... elapsed time: %f\n\n", time);
 
+	/*
 	// perform actual denoising of the actual block group (regarding to one ref_block)
 	printf ("[INFO] ... launch of denoising...\n");
 
@@ -1217,6 +1271,7 @@ int bm3d (char* const infile, 			// name of input file
 
 	// final estimates
 	printf ("[INFO] ... end of denoising...\n\n");
+	*/
 
 	// convert colorspace from YUV back to RGB
 	printf ("[INFO] ... launch of color conversion...\n");
