@@ -180,6 +180,22 @@ int append_group (list_t* list, group_t* group) {
 	return 0;
 }
 
+//TODO only for testing purposes
+void add_block_to_pattern (block_t* block, unsigned int w, unsigned int h, int buf[w][h]) {
+	int x = block->x;
+	int y = block->y;
+	int bs = block->block_size;
+	int i, j;
+
+	// printf ("x: %d\ny: %d\nbs: %d\n\n", x, y, bs);
+
+	for (j=0; j<bs; ++j) {
+		for (i=0; i<bs; ++i) {
+			buf[j+y-(bs/2)][i+x-(bs/2)] = 1.0;
+		}
+	}
+}
+
 int append_block (group_t* group, block_t* block, double const distance) {
 	node_t* tmp = *group;
 	node_t* new_node;
@@ -508,6 +524,9 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sig
 	return distance;
 }
 
+void get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
+
+}
 
 //------------ METHODS FOR DENOISING ------------
 node_t* get_previous_block (group_t group, node_t* block) {
@@ -719,6 +738,41 @@ int determine_estimates (list_t const list, int const sigma) {
 	return 0;
 }
 
+//TODO only for testing purposes
+int pattern2file (unsigned int const width, unsigned int const height, int buf[width][height], char* const path, char* const prefix) {
+	FILE* fd = 0;
+	char outfile[40];
+	int i, j;
+
+	//obtain output filename
+	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
+		generate_error ("Unable to process output filename for buffer...");
+		return 1;
+	}
+
+	fd = fopen (outfile, "w");
+	
+	if (fd == NULL) {
+		generate_error ("Unable to open file for printing buffer...");
+		return 1;
+	}
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", prefix);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (j=0; j<height; ++j) {
+		for (i=0; i<width; ++i) {
+			fprintf (fd, "%d ", buf[j][i]);
+		}
+		fprintf (fd, "\n");
+	}
+
+	fclose (fd);
+
+	return 0;
+}
+
 int buffer2file (unsigned int const width, unsigned int const height, double buf[width][height], char* const path, char* const prefix) {
 	FILE* fd = 0;
 	char outfile[40];
@@ -753,7 +807,7 @@ int buffer2file (unsigned int const width, unsigned int const height, double buf
 	return 0;
 }
 
-int aggregate(png_img* img, list_t* list) {
+int aggregate(png_img* img, list_t* list, unsigned int channel) {
 	group_node_t* tmp = *list;
 	node_t* group;
 	block_t* block;
@@ -761,6 +815,9 @@ int aggregate(png_img* img, list_t* list) {
 	double ebuf[img->width][img->height];
 	double wbuf[img->width][img->height];
 	int i, j;
+	int x, y, bs;
+	png_byte* row;
+	png_byte* pix;
 
 	printf ("width: %d\nheight: %d\n", img->width, img->height);
 
@@ -772,16 +829,17 @@ int aggregate(png_img* img, list_t* list) {
 		
 		while (group != NULL) {
 			block = &group->block;
-			printf ("block_size: %d\n", block->block_size);
-			printf ("block_x: %d\n", block->x);
-			printf ("block_y: %d\n", block->y);
+			x = block->x;
+			y = block->y;
+			bs = block->block_size;
+
 			// iterate over current block and extract values
 			for (j=0; j<block->block_size; ++j) {
 				for (i=0; i<block->block_size; ++i) {
 					// if (block->x==15 && block->y==15) {
 						// printf ("%f ", block->data[j][i]);
-						ebuf[j+(block->y/2)][i+(block->x/2)] += block->data[j][i] * tmp->weight;
-						wbuf[j+(block->y/2)][i+(block->x/2)] += tmp->weight;
+						ebuf[j+y-(bs/2)][i+x-(bs/2)] += block->data[j][i] * tmp->weight;
+						wbuf[j+y-(bs/2)][i+x-(bs/2)] += tmp->weight;
 						// ebuf[j][i] += block->data[j][i];
 						// printf ("%f ", ebuf[j][i]);
 					// }
@@ -818,9 +876,20 @@ int aggregate(png_img* img, list_t* list) {
 
 	printf ("max est: %f\n", max);
 
+	// write buffer with local estimates to file
 	if (buffer2file(img->width, img->height, ebuf, "dns/", "estimates") != 0) {
 		return 1;
 	}	
+
+	// write local estimates back to image
+	for (j=0; j<img->height; ++j) {
+		row = img->data[j];
+
+		for (i=0; i<img->width; ++i) {
+			pix = &(row[i*3]);
+			pix[channel] = (ebuf[j][i] != 0.0) ? ebuf[j][i] : pix[channel];
+		}
+	}
 	
 	return 0;
 }
@@ -842,7 +911,9 @@ int bm3d (char* const infile, 			// name of input file
 	double tau_match = 0.1; 				// factor to calculate the maximum deviation in %
 	int i, j, k, l;
 	group_t group = 0;						// group, which holds a set of similar blocks
-	list_t list = 0;							// list of groups
+	list_t y_list = 0;						// list of groups	of the y-channel
+	list_t u_list = 0;						// list of groups of the u-channel
+	list_t v_list = 0;						// list of groups of the v-channel
 	clock_t bm_start, bm_end;				// time variables for block matching start and end
 	double time;
 
@@ -862,6 +933,8 @@ int bm3d (char* const infile, 			// name of input file
 		generate_error ("Wrong number of channels...");
 		return 1;
 	}
+
+	int pattern[img.width][img.height]; //TODO only for testing purposes
 
 	// print status information on the console
 	printf ("[INFO] ... .............................................\n");
@@ -930,6 +1003,8 @@ int bm3d (char* const infile, 			// name of input file
 					return 1;
 				}
 
+				add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
+
 				for (l=0; l<img.height; l=l+block_step) {
 					for (k=0; k<img.width; k=k+block_step) {
 
@@ -953,13 +1028,15 @@ int bm3d (char* const infile, 			// name of input file
 								if (append_block (&group, &cmp_block, d) != 0) {
 									return 1;
 								}
+
+								add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
 							}
 						}
 					}
 				}
 
 				// add group of similar blocks to list
-				if (append_group (&list, &group) != 0) {
+				if (append_group (&y_list, &group) != 0) {
 					return 1;
 				}
 
@@ -968,7 +1045,12 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
-	if (print_list(list, "grp/org/", "group") != 0) {
+	//TODO only for testing purposes
+	if (pattern2file(img.width, img.height, pattern, "./", "pattern") != 0) {
+		return 1;
+	}	
+	
+	if (print_list(y_list, "grp/org/", "group") != 0) {
 		return 1;
 	}
 
@@ -982,13 +1064,13 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// add number of groups and computation time to txt-file for statistical evaluation
-	if (add_csv_line(outfile, block_step, list_length(&list), time) != 0) {
+	if (add_csv_line(outfile, block_step, list_length(&y_list), time) != 0) {
 		generate_error ("Unable to add values to csv-file...");
 		return 1;
 	}
 
 	printf ("[INFO] ... end of block-matching...\n");
-	printf ("[INFO] ... number of groups in list: %d\n", list_length(&list));
+	printf ("[INFO] ... number of groups in list: %d\n", list_length(&y_list));
 	printf ("[INFO] ... elapsed time: %f\n\n", time);
 
 	// perform actual denoising of the actual block group (regarding to one ref_block)
@@ -996,28 +1078,31 @@ int bm3d (char* const infile, 			// name of input file
 
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming blocks to maximum size...\n");
-	if (trim_list(&list, max_blocks) != 0) {
+	if (trim_list(&y_list, max_blocks) != 0) {
 		return 1;
 	}
 
-	if (print_list(list, "grp/trm/", "group") != 0) {
+	// obtain the pixel values from the u- and v-channel of the image
+	get_chrom (&img, &y_list, &u_list, &v_list);
+
+	if (print_list(y_list, "grp/trm/", "group") != 0) {
 		return 1;
 	}
 
 	printf ("[INFO] ... determining local estimates...\n");
 	// determine local estimates
-	if (determine_estimates(list, sigma) != 0) {
+	if (determine_estimates(y_list, sigma) != 0) {
 		return 1;
 	}
 
-	if (print_list(list, "grp/est/", "group") != 0) {
+	if (print_list(y_list, "grp/est/", "group") != 0) {
 		return 1;
 	}
 
 	printf ("[INFO] ... aggregating local estimates...\n");
 	printf ("width: %d\nheight: %d\n", img.width, img.height);
 	// aggregation
-	if (aggregate(&img, &list) != 0) {
+	if (aggregate(&img, &y_list, 0) != 0) {
 		return 1;
 	}
 
