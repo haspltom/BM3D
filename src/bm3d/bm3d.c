@@ -524,8 +524,74 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sig
 	return distance;
 }
 
-void get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
+int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
+	group_node_t* tmp = *ylist;
+	node_t* group;
+	block_t* block;
+	double w;							// weight of actual processed group
+	int x, y, bs;
+	double d;
+	group_t u_group = 0;				// group, which holds a set of similar blocks
+	group_t v_group = 0;				// group, which holds a set of similar blocks
+	block_t tmp_block;
 
+	// allocate block memory
+	if (new_block_struct(tmp->group->block.block_size, &tmp_block) != 0) {
+		return 1;
+	}
+
+	// go through all groups
+	while (tmp->next != NULL) {
+		group = tmp->group;
+		w = tmp->weight;
+
+		// iterate over all blocks within the actual group
+		while (group != NULL) {
+			block = &group->block;
+			x = block->x;
+			y = block->y;
+			bs = block->block_size;
+			d = group->distance;
+
+			// obtain block data for the u-channel
+			if (get_block (img, 1, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
+				return 1;
+			}
+				
+			// append block data to the regarding group
+			if (append_block (&u_group, &tmp_block, d) != 0) {
+				return 1;
+			}
+
+			// obtain block data for the v-channel
+			if (get_block (img, 2, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
+				return 1;
+			}
+				
+			// append block data to the regarding group
+			if (append_block (&v_group, &tmp_block, d) != 0) {
+				return 1;
+			}
+
+			group = group->next;
+		}
+
+		// add extracted groups to regarding lists
+		if (append_group (ulist, &u_group) != 0) {
+			return 1;
+		}
+
+		if (append_group (vlist, &v_group) != 0) {
+			return 1;
+		}
+
+		u_group = 0; //EVIL, cause same pointer
+		v_group = 0; //EVIL, cause same pointer
+		tmp = tmp->next;
+	}
+	// TODO delete dynamic memory
+
+	return 0;
 }
 
 //------------ METHODS FOR DENOISING ------------
@@ -1083,26 +1149,67 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// obtain the pixel values from the u- and v-channel of the image
-	get_chrom (&img, &y_list, &u_list, &v_list);
-
-	if (print_list(y_list, "grp/trm/", "group") != 0) {
+	if (get_chrom(&img, &y_list, &u_list, &v_list)) {
 		return 1;
 	}
 
-	printf ("[INFO] ... determining local estimates...\n");
+	if (print_list(y_list, "grp/trm/y/", "group") != 0) {
+		return 1;
+	}
+
+	if (print_list(u_list, "grp/trm/u/", "group") != 0) {
+		return 1;
+	}
+
+	if (print_list(v_list, "grp/trm/v/", "group") != 0) {
+		return 1;
+	}
+
 	// determine local estimates
+	printf ("[INFO] ... determining local estimates...\n");
+
+	printf ("[INFO] ... luminance channel...\n");
 	if (determine_estimates(y_list, sigma) != 0) {
 		return 1;
 	}
 
-	if (print_list(y_list, "grp/est/", "group") != 0) {
+	printf ("[INFO] ... chrominance channel 1...\n");
+	if (determine_estimates(u_list, sigma) != 0) {
+		return 1;
+	}
+
+	printf ("[INFO] ... chrominance channel 2...\n");
+	if (determine_estimates(v_list, sigma) != 0) {
+		return 1;
+	}
+
+	if (print_list(y_list, "grp/est/y/", "group") != 0) {
+		return 1;
+	}
+
+	if (print_list(u_list, "grp/est/u/", "group") != 0) {
+		return 1;
+	}
+
+	if (print_list(v_list, "grp/est/v/", "group") != 0) {
 		return 1;
 	}
 
 	printf ("[INFO] ... aggregating local estimates...\n");
-	printf ("width: %d\nheight: %d\n", img.width, img.height);
+	// printf ("width: %d\nheight: %d\n", img.width, img.height);
 	// aggregation
+	printf ("[INFO] ... luminance channel...\n");
 	if (aggregate(&img, &y_list, 0) != 0) {
+		return 1;
+	}
+
+	printf ("[INFO] ... chrominance channel 1...\n");
+	if (aggregate(&img, &u_list, 1) != 0) {
+		return 1;
+	}
+
+	printf ("[INFO] ... chrominance channel 2...\n");
+	if (aggregate(&img, &v_list, 2) != 0) {
 		return 1;
 	}
 
