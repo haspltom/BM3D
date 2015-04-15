@@ -246,37 +246,35 @@ void mark_search_window (png_img* img, block_t* block, int const h_search, int c
 	png_byte* row;
 	png_byte* tmp;
 	int i, j;
-	int x = block->x - (block->block_size/2);
-	int y = block->y - (block->block_size/2);
 	int h_start, v_start;
 
-	if ((x - (h_search/2)) < 0) {
+	if ((block->x - (h_search/2)) < 0) {
 		h_start = 0;
 	}
-	else if ((x + (h_search/2)) > img->width-1) {
+	else if ((block->x + (h_search/2)) > img->width-1) {
 		h_start = img->width - h_search;
 	}
 	else {
-		h_start = x - (h_search/2);
+		h_start = block->x - (h_search/2);
 	}
 
-	if ((y - (v_search/2)) < 0) {
+	if ((block->y - (v_search/2)) < 0) {
 		v_start = 0;
 	}
-	else if ((y + (v_search/2)) > img->height-1) {
+	else if ((block->y + (v_search/2)) > img->height-1) {
 		v_start = img->height - v_search;
 	}
 	else {
-		v_start = y - (v_search/2);
+		v_start = block->y - (v_search/2);
 	}
 
-	for (j=v_start; j<v_search; ++j) {
-		row = img->data[j+y];
+	for (j=v_start; j<(v_start+v_search); ++j) {
+		row = img->data[j];
 
-		for (i=h_start; i<h_search; ++i) {
-			tmp = &(row[(i+x)*3]);
+		for (i=h_start; i<(h_start+h_search); ++i) {
+			tmp = &(row[i*3]);
 
-			if (i==h_start || i==h_search-1 || j==v_start || j==v_search-1) {
+			if (i==h_start || i==(h_start+h_search-1) || j==v_start || j==(v_start+v_search-1)) {
 				tmp[0] = 0;
 				tmp[1] = 0;
 				tmp[2] = 0;
