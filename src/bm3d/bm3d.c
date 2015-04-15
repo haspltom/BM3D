@@ -264,13 +264,30 @@ int mark_ref_block (png_img* img, block_t* block) {
 	return 0;
 }
 
-// int mark_cmp_block (png_img* img, block_t* block) {
-// 	png_byte* row;
-// 	png_byte* tmp;
-// 	int i, j;
-// 
-// 	return 0;
-// }
+int mark_cmp_block (png_img* img, block_t* block) {
+	png_byte* row;
+	png_byte* tmp;
+	int i, j;
+	int bs = block->block_size;
+	int x = block->x - (bs/2);
+	int y = block->y - (bs/2);
+
+	for (j=0; j<block->block_size; ++j) {
+		row = img->data[j+y];
+
+		for (i=0; i<block->block_size; ++i) {
+			tmp = &(row[(i+x)*3]);
+
+			if (i==0 || i==bs-1 || j==0 || j==bs-1) {
+				tmp[0] = 0;
+				tmp[1] = 0;
+				tmp[2] = 0;
+			}
+		}
+	}
+
+	return 0;
+}
 
 unsigned int list_length (list_t* list){
 	unsigned int len = 0;
@@ -998,6 +1015,7 @@ int bm3d (char* const infile, 			// name of input file
 			 int const h_search,				// horizontal width of search window
 			 int const v_search) { 			// vertical width of search window
 	png_img img;								// noisy input image
+	png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
 	unsigned int count = 0;
@@ -1100,6 +1118,8 @@ int bm3d (char* const infile, 			// name of input file
 					return 1;
 				}
 
+				copy_img (&img, &tmp);
+
 				if (mark_ref_block (&img, &ref_block) != 0) {
 					return 1;
 				}
@@ -1130,7 +1150,7 @@ int bm3d (char* const infile, 			// name of input file
 									return 1;
 								}
 
-								if (mark_ref_block (&img, &cmp_block) != 0) {
+								if (mark_cmp_block (&img, &cmp_block) != 0) {
 									return 1;
 								}
 
