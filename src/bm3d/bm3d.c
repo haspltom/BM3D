@@ -242,7 +242,50 @@ int append_block (group_t* group, block_t* block, double const distance) {
 	return 0;
 }
 
-int mark_ref_block (png_img* img, block_t* block) {
+void mark_search_window (png_img* img, block_t* block, int const h_search, int const v_search) {
+	png_byte* row;
+	png_byte* tmp;
+	int i, j;
+	int x = block->x - (block->block_size/2);
+	int y = block->y - (block->block_size/2);
+	int h_start, v_start;
+
+	if ((x - (h_search/2)) < 0) {
+		h_start = 0;
+	}
+	else if ((x + (h_search/2)) > img->width-1) {
+		h_start = img->width - h_search;
+	}
+	else {
+		h_start = x - (h_search/2);
+	}
+
+	if ((y - (v_search/2)) < 0) {
+		v_start = 0;
+	}
+	else if ((y + (v_search/2)) > img->height-1) {
+		v_start = img->height - v_search;
+	}
+	else {
+		v_start = y - (v_search/2);
+	}
+
+	for (j=v_start; j<v_search; ++j) {
+		row = img->data[j+y];
+
+		for (i=h_start; i<h_search; ++i) {
+			tmp = &(row[(i+x)*3]);
+
+			if (i==h_start || i==h_search-1 || j==v_start || j==v_search-1) {
+				tmp[0] = 0;
+				tmp[1] = 0;
+				tmp[2] = 0;
+			}
+		}
+	}
+}
+
+void mark_ref_block (png_img* img, block_t* block) {
 	png_byte* row;
 	png_byte* tmp;
 	int i, j;
@@ -260,8 +303,6 @@ int mark_ref_block (png_img* img, block_t* block) {
 			tmp[2] = 0;
 		}
 	}
-
-	return 0;
 }
 
 int mark_cmp_block (png_img* img, block_t* block) {
@@ -1037,6 +1078,11 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	// read temporary image
+	if (png_read(&tmp, infile) != 0) {
+		return 1;
+	}
+
 	// control color type
 	if (img.color != PNG_COLOR_TYPE_RGB) {
 		generate_error ("Wrong color type...");
@@ -1118,11 +1164,10 @@ int bm3d (char* const infile, 			// name of input file
 					return 1;
 				}
 
-				copy_img (&img, &tmp);
-
-				if (mark_ref_block (&img, &ref_block) != 0) {
-					return 1;
-				}
+				png_copy_values (&tmp, &img);
+			
+				mark_search_window (&tmp, &ref_block, h_search, v_search);
+				mark_ref_block (&tmp, &ref_block);
 
 				add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
 
@@ -1150,10 +1195,9 @@ int bm3d (char* const infile, 			// name of input file
 									return 1;
 								}
 
-								if (mark_cmp_block (&img, &cmp_block) != 0) {
+								if (mark_cmp_block (&tmp, &cmp_block) != 0) {
 									return 1;
 								}
-
 
 								add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
 							}
@@ -1174,7 +1218,7 @@ int bm3d (char* const infile, 			// name of input file
 				}
 
 				// write output image
-				if (png_write(&img, outfile) != 0) {
+				if (png_write(&tmp, outfile) != 0) {
 					return 1;
 				}
 
