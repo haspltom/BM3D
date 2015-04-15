@@ -4,6 +4,28 @@
 #include "../error/error.h"
 #include "png_io.h"
 
+void png_copy_values (png_img* target, png_img* source) {
+	png_byte* row_source;
+	png_byte* row_target;
+	png_byte* tmp_source;
+	png_byte* tmp_target;
+	int i, j;
+
+	for (j=0; j<target->height; ++j) {
+		row_target = target->data[j];
+		row_source = source->data[j];
+
+		for (i=0; i<target->width; ++i) {
+			tmp_target = &(row_target[i*3]);
+			tmp_source = &(row_source[i*3]);
+
+			tmp_target[0] = tmp_source[0];
+			tmp_target[1] = tmp_source[1];
+			tmp_target[2] = tmp_source[2];
+		}
+	}
+}
+
 int png_read (png_img* img, char* const filename) {
 	FILE* fd;
 	png_structp png;						// pointer to png-file
