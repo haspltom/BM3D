@@ -534,6 +534,8 @@ void idct_3d (int const len, int const z, double arr[z][len][len]) {
 void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, int const sigma) {
 	int i, j;
 	double threshold = th_2d * (double)sigma * sqrt(2.0*log(bs*bs));
+
+	// printf ("%f\n", threshold);
 	
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
@@ -583,7 +585,7 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sig
 	double cmp_mat[bs][bs];
 	double sub_mat[bs][bs];
 	double distance = 0.0;
-	double th_2d = 0.82;
+	double th_2d = 0.32;
 
 	// subtract 128 for DCT transformation
 	shift_values (bs, ref_block, ref_mat);
