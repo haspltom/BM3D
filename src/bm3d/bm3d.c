@@ -1046,6 +1046,27 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 	return 0;
 }
 
+int exceeds_image_dimensions (int const width, int const height, int const bs, int const x, int const y) {
+	if (((x+(bs/2) < width) && (x-(bs/2) >= 0)) && ((y+(bs/2) < height) && (y-(bs/2) >= 0))) { 
+		return 0;
+	}
+
+	return 1;
+}
+
+int exceeds_search_window (int const width, int const height, int const bs, int const h_search, int const v_search, int const i, int const j, int const k, int const l) {
+	if ((((k+(bs/2) <= (i+(h_search/2))) && (k-(bs/2) > (i-(h_search/2)))) || 	// block must not exceed horizontal search window dimensions
+		  ((i <= (h_search/2)) && (k+(bs/2) <= h_search)) || 							// case if horizontal dimension is at the left border
+		  ((i > (width-(h_search/2)) && (k-(bs/2) > (width-h_search))))) &&		// case if horizontal dimension is at the right border
+		 (((l+(bs/2) <= (j+(v_search/2))) && (l-(bs/2) > (j-(v_search/2)))) || 	// block must not exceed vertical search window dimensions
+		  ((j <= (v_search/2)) && (l+(bs/2) <= v_search)) || // case if vertical dimension is at the upper border
+		  (((j > (height-(v_search/2))) && (l-(bs/2) > (height-v_search)))))) {
+			 return 0;
+		 }
+
+	return 1;
+}
+
 int bm3d (char* const infile, 			// name of input file
 			 int const block_size, 			// size of internal processed blocks
 			 int const block_step, 			// step size between blocks
@@ -1147,8 +1168,7 @@ int bm3d (char* const infile, 			// name of input file
 		for (i=0; i<img.width; i=i+block_step) {
 
 			// obtain refernce block
-			if (((i+(block_size/2) < img.width) && (i-(block_size/2) >= 0)) &&  // block must not exceed horizontal image dimensions
-				 ((j+(block_size/2) < img.height) && (j-(block_size/2) >= 0))) { // block must not exceed vertical image dimensions
+			if (!exceeds_image_dimensions(img.width, img.height, block_size, i, j)) { 
 
 				if (get_block (&img, 0, &ref_block, i-(block_size/2), j-(block_size/2)) != 0) {
 					return 1;
@@ -1173,11 +1193,9 @@ int bm3d (char* const infile, 			// name of input file
 					for (k=0; k<img.width; k=k+block_step) {
 
 						// obtain block to compare to reference block
-						if (((k+(block_size/2) < img.width) && (k-(block_size/2) >= 0)) &&								// block must not exceed horizontal image dimensions
-							 ((l+(block_size/2) < img.height) && (l-(block_size/2) >= 0)) && 								// block must not exceed vertical image dimensions
-							 ((k+(block_size/2) <= (i+(h_search/2))) && (k-(block_size/2) > (i-(h_search/2)))) &&	// block must not exceed horizontal search window dimensions
-							 ((l+(block_size/2) <= (j+(v_search/2))) && (l-(block_size/2) > (j-(v_search/2)))) &&	// block must not exceed vertical search window dimensions
-							 !((i==k) && (j==l))) {																						// must be different from reference block
+						if (!(exceeds_image_dimensions(img.width, img.height, block_size, k, l)) && 								
+							 !(exceeds_search_window(img.width, img.height, block_size, h_search, v_search, i, j, k, l)) &&
+							 !((i==k) && (j==l))) {			// must be different from reference block
 
 							if (get_block (&img, 0, &cmp_block, k-(block_size/2), l-(block_size/2)) != 0) {
 								return 1;
