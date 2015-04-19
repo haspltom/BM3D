@@ -255,7 +255,7 @@ void mark_search_window (png_img* img, block_t* block, int const h_search, int c
 		h_start = img->width - h_search;
 	}
 	else {
-		h_start = block->x - (h_search/2);
+		h_start = block->x - (h_search/2) + 1;
 	}
 
 	if ((block->y - (v_search/2)) < 0) {
@@ -265,7 +265,7 @@ void mark_search_window (png_img* img, block_t* block, int const h_search, int c
 		v_start = img->height - v_search;
 	}
 	else {
-		v_start = block->y - (v_search/2);
+		v_start = block->y - (v_search/2) + 1;
 	}
 
 	for (j=v_start; j<(v_start+v_search); ++j) {
