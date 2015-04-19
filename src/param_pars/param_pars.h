@@ -8,6 +8,9 @@ typedef struct params {
 	unsigned int max_blocks;
 	unsigned int h_search;
 	unsigned int v_search;
+	double th_2d;
+	double tau_2d;
+	double th_3d;
 } params_t;
 
 typedef enum states {

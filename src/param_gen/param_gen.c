@@ -10,7 +10,10 @@ extern int generate_params_file (unsigned int const block_size,
 											unsigned int const sigma,
 											unsigned int const max_blocks,
 											unsigned int const h_search,
-											unsigned int const v_search) {
+											unsigned int const v_search,
+											double const th_2d,
+											double const tau_2d,
+											double const th_3d) {
 	FILE* fd;
 	char outfile[40];
 	char prefix[30];
@@ -75,6 +78,15 @@ extern int generate_params_file (unsigned int const block_size,
 	sprintf (line, "	V_SEARCH %d", v_search);
 	fprintf (fd, "%s\n", line);
 
+	sprintf (line, "	THRESHOLD_2D %f", th_2d);
+	fprintf (fd, "%s\n", line);
+
+	sprintf (line, "	TAU_MATCH_2D %f", tau_2d);
+	fprintf (fd, "%s\n", line);
+
+	sprintf (line, "	THRESHOLD_3D %f", th_3d);
+	fprintf (fd, "%s\n", line);
+
 	sprintf (line, "END_PARAMS");
 	fprintf (fd, "%s", line);
 
@@ -92,7 +104,7 @@ int main (int argc, char **argv) {
 	char* err_prefix = "[ERROR] ... ";
 
 	// check arguments
-	if (argc != 7) {
+	if (argc != 10) {
 		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
 		printf ("Usage:\n");
 		printf ("param_gen ");
@@ -101,11 +113,14 @@ int main (int argc, char **argv) {
 		printf ("<sigma> ");
 		printf ("<maximum number of blocks> ");
 		printf ("<horizontal search window size> ");
-		printf ("<vertical search window size>\n");
+		printf ("<vertical search window size >");
+		printf ("<2D threshold> ");
+		printf ("<2D tau-match> ");
+		printf ("<3D threshold>\n");
 		return 1;
 	}
 
-	if (generate_params_file(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6])) != 0) {
+	if (generate_params_file(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atof(argv[7]), atof(argv[8]), atof(argv[9])) != 0) {
 		printf ("%s%s\n", err_prefix, ptr);
 		// free (ptr); //TODO
 		return 1;

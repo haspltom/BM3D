@@ -6,6 +6,9 @@ extern int generate_params_file (unsigned int const block_size,
 											unsigned int const sigma,
 											unsigned int const max_blocks,
 											unsigned int const h_search,
-											unsigned int const v_search);
+											unsigned int const v_search,
+											double const th_2d,
+											double const tau_2d,
+											double const th_3d);
 
 #endif // PARAM_GEN_H

@@ -76,6 +76,15 @@ int get_params (char* const filename, params_t* params) {
 			else if (strstr(tmp, "V_SEARCH") != NULL) {
 				params->v_search = get_val(tmp);
 			}
+			else if (strstr(tmp, "THRESHOLD_2D") != NULL) {
+				params->th_2d = get_val(tmp);
+			}
+			else if (strstr(tmp, "TAU_MATCH_2D") != NULL) {
+				params->tau_2d = get_val(tmp);
+			}
+			else if (strstr(tmp, "THRESHOLD_3D") != NULL) {
+				params->th_3d = get_val(tmp);
+			}
 		}
 	}
 
