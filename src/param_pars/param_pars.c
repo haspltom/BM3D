@@ -5,15 +5,15 @@
 #include "../error/error.h"
 #include "param_pars.h"
 
-unsigned int get_val (char* const str) {
+double get_val (char* const str) {
 	regex_t regex;
 	regmatch_t regmatch;
 	char* sub;
 	unsigned int len = 0;
-	unsigned int val = 0;
+	double val = 0.0;
 
 	// compile regular expression
-	if (regcomp(&regex, "[[:digit:]]+", REG_EXTENDED) != 0) {
+	if (regcomp(&regex, "[[:blank:]][[:digit:]]+(.[[:digit:]]+)?", REG_EXTENDED) != 0) {
 		generate_error ("Unable to compile regular expression");
 		return 1;
 	}
@@ -28,7 +28,7 @@ unsigned int get_val (char* const str) {
 	sub = malloc (len+1);							// allocate memory for substring
 	strncpy (sub, str+regmatch.rm_so, len);	// read substring from line
 	sub[len] = '\0';									// add terminating zero to substring
-	val = atoi (sub);									// convert substring to number
+	val = atof (sub);									// convert substring to number
 	free (sub);											// free allocated memory again
 	regfree (&regex);									// free compiled regular expression again
 
@@ -59,22 +59,22 @@ int get_params (char* const filename, params_t* params) {
 		// write the extracted value to the regarding variable
 		if (st == ACTIVE) {
 			if (strstr(tmp, "BLOCK_SIZE") != NULL) {
-				params->block_size = get_val(tmp);
+				params->block_size = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "BLOCK_STEP") != NULL) {
-				params->block_step = get_val(tmp);
+				params->block_step = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "SIGMA") != NULL) {
-				params->sigma = get_val(tmp);
+				params->sigma = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "MAX_BLOCKS") != NULL) {
-				params->max_blocks = get_val(tmp);
+				params->max_blocks = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "H_SEARCH") != NULL) {
-				params->h_search = get_val(tmp);
+				params->h_search = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "V_SEARCH") != NULL) {
-				params->v_search = get_val(tmp);
+				params->v_search = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "THRESHOLD_2D") != NULL) {
 				params->th_2d = get_val(tmp);
