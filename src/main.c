@@ -24,9 +24,6 @@ int main (int argc, char **argv) {
 	}
 
 	printf ("[INFO] ... launch BM3D...\n");
-	printf ("th_2d: %f\n", params.th_2d);
-	printf ("tau_2d: %f\n", params.tau_2d);
-	printf ("th_3d: %f\n", params.th_3d);
 
 	if (bm3d(argv[1],
 				params.block_size, 
