@@ -24,6 +24,9 @@ int main (int argc, char **argv) {
 	}
 
 	printf ("[INFO] ... launch BM3D...\n");
+	printf ("th_2d: %f\n", params.th_2d);
+	printf ("tau_2d: %f\n", params.tau_2d);
+	printf ("th_3d: %f\n", params.th_3d);
 
 	if (bm3d(argv[1],
 				params.block_size, 
@@ -31,7 +34,10 @@ int main (int argc, char **argv) {
 				params.sigma, 
 				params.max_blocks, 
 				params.h_search, 
-				params.v_search) != 0) {
+				params.v_search,
+				params.th_2d,
+				params.tau_2d,
+				params.th_3d) != 0) {
 		printf ("%s%s\n", err_prefix, ptr);
 		// free (ptr); //TODO
 		return 1;

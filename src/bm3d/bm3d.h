@@ -37,7 +37,10 @@ extern int bm3d (char* const infile, 			// name of input file
 			 		  int const block_step, 		// step size between blocks
 			 		  int const std_dev, 			// standard deviation of noise
 			 		  int const max_blocks,			// maximum number of block in one 3D array
-			 		  int const search_window_x,	// horizontal width of search window
-			 		  int const search_window_y); // vertical width of search window
+			 		  int const h_search,	// horizontal width of search window
+			 		  int const v_search,  // vertical width of search window
+					  double const th_2d,			// threshold for the 2D transformation
+					  double const tau_2d, 			// match value for block-matching
+					  double const th_3d);			// threshold for the 3D transformtaion
 
 #endif // BM3D_H

@@ -1075,7 +1075,10 @@ int bm3d (char* const infile, 			// name of input file
 			 int const sigma, 				// standard deviation of noise
 			 int const max_blocks,			// maximum number of block in one 3D array
 			 int const h_search,				// horizontal width of search window
-			 int const v_search) { 			// vertical width of search window
+			 int const v_search, 			// vertical width of search window
+			 double const th_2d,				// threshold for the 2D transformation
+			 double const tau_2d, 			// match value for block-matching
+			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
 	png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
@@ -1127,6 +1130,9 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... maximum number of blocks: %d\n", max_blocks);
 	printf ("[INFO] ... horizontal search window size: %d\n", h_search);
 	printf ("[INFO] ... vertical search window size: %d\n", v_search);
+	printf ("[INFO] ... threshold 2D: %f\n", th_2d);
+	printf ("[INFO] ... tau-match 2D: %f\n", tau_2d);
+	printf ("[INFO] ... threshold 3D: %f\n", th_3d);
 	printf ("[INFO] ... .............................................\n\n");
 
 	// convert colorspace from RGB to YUV
