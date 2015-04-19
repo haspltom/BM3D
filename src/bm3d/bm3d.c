@@ -579,13 +579,12 @@ double l2_norm (int const bs, double const mat[bs][bs]) {
 
 
 // performs a check, whether two given blocks are similar
-double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sigma) {
+double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sigma, double const th_2d) {
 	int const bs = ref_block->block_size;
 	double ref_mat[bs][bs];
 	double cmp_mat[bs][bs];
 	double sub_mat[bs][bs];
 	double distance = 0.0;
-	double th_2d = 0.32;
 
 	// subtract 128 for DCT transformation
 	shift_values (bs, ref_block, ref_mat);
@@ -1087,8 +1086,6 @@ int bm3d (char* const infile, 			// name of input file
 	block_t ref_block;
 	block_t cmp_block;
 	double d;	// block distance
-	// double tau_match = 0.233;
-	double tau_match = 0.1; 				// factor to calculate the maximum deviation in %
 	int i, j, k, l;
 	group_t group = 0;						// group, which holds a set of similar blocks
 	list_t y_list = 0;						// list of groups	of the y-channel
@@ -1211,10 +1208,10 @@ int bm3d (char* const infile, 			// name of input file
 							// printf ("(%d/%d)\n", k, l);
 
 							// compare blocks for similarity
-							d = get_block_distance (&ref_block, &cmp_block, sigma);
+							d = get_block_distance (&ref_block, &cmp_block, sigma, th_2d);
 							
 							// decide whether block similarity is sufficient
-							if (d < tau_match*255) {
+							if (d < tau_2d*255) {
 								if (append_block (&group, &cmp_block, d) != 0) {
 									return 1;
 								}
