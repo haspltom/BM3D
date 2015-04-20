@@ -180,22 +180,6 @@ int append_group (list_t* list, group_t* group) {
 	return 0;
 }
 
-//TODO only for testing purposes
-void add_block_to_pattern (block_t* block, unsigned int w, unsigned int h, int buf[w][h]) {
-	int x = block->x;
-	int y = block->y;
-	int bs = block->block_size;
-	int i, j;
-
-	// printf ("x: %d\ny: %d\nbs: %d\n\n", x, y, bs);
-
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			buf[j+y-(bs/2)][i+x-(bs/2)] = 1.0;
-		}
-	}
-}
-
 int append_block (group_t* group, block_t* block, double const distance) {
 	node_t* tmp = *group;
 	node_t* new_node;
@@ -891,41 +875,6 @@ int determine_estimates (list_t const list, int const sigma) {
 	return 0;
 }
 
-//TODO only for testing purposes
-int pattern2file (unsigned int const width, unsigned int const height, int buf[width][height], char* const path, char* const prefix) {
-	FILE* fd = 0;
-	char outfile[40];
-	int i, j;
-
-	//obtain output filename
-	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
-		generate_error ("Unable to process output filename for buffer...");
-		return 1;
-	}
-
-	fd = fopen (outfile, "w");
-	
-	if (fd == NULL) {
-		generate_error ("Unable to open file for printing buffer...");
-		return 1;
-	}
-
-	fprintf (fd, "[INFO] ... .............................................\n");
-	fprintf (fd, "[INFO] ... %s\n", prefix);
-	fprintf (fd, "[INFO] ... .............................................\n\n");
-
-	for (j=0; j<height; ++j) {
-		for (i=0; i<width; ++i) {
-			fprintf (fd, "%d ", buf[j][i]);
-		}
-		fprintf (fd, "\n");
-	}
-
-	fclose (fd);
-
-	return 0;
-}
-
 int buffer2file (unsigned int const width, unsigned int const height, double buf[width][height], char* const path, char* const prefix) {
 	FILE* fd = 0;
 	char outfile[40];
@@ -1116,8 +1065,6 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	int pattern[img.width][img.height]; //TODO only for testing purposes
-
 	// print status information on the console
 	printf ("[INFO] ... .............................................\n");
 	printf ("[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
@@ -1192,8 +1139,6 @@ int bm3d (char* const infile, 			// name of input file
 				mark_search_window (&tmp, &ref_block, h_search, v_search);
 				mark_ref_block (&tmp, &ref_block);
 
-				add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
-
 				for (l=0; l<img.height; l=l+block_step) {
 					for (k=0; k<img.width; k=k+block_step) {
 
@@ -1219,8 +1164,6 @@ int bm3d (char* const infile, 			// name of input file
 								if (mark_cmp_block (&tmp, &cmp_block) != 0) {
 									return 1;
 								}
-
-								add_block_to_pattern (&ref_block, img.width, img.height, pattern); //TODO only for testing
 							}
 						}
 					}
@@ -1249,11 +1192,6 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
-	//TODO only for testing purposes
-	if (pattern2file(img.width, img.height, pattern, "./", "pattern") != 0) {
-		return 1;
-	}	
-	
 	if (print_list(y_list, "grp/org/", "group") != 0) {
 		return 1;
 	}
