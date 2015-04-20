@@ -287,7 +287,7 @@ void mark_ref_block (png_img* img, block_t* block) {
 	}
 }
 
-int mark_cmp_block (png_img* img, block_t* block) {
+void mark_cmp_block (png_img* img, block_t* block) {
 	png_byte* row;
 	png_byte* tmp;
 	int i, j;
@@ -308,8 +308,6 @@ int mark_cmp_block (png_img* img, block_t* block) {
 			}
 		}
 	}
-
-	return 0;
 }
 
 unsigned int list_length (list_t* list){
@@ -1028,10 +1026,10 @@ int bm3d (char* const infile, 			// name of input file
 			 double const tau_2d, 			// match value for block-matching
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
-	png_img tmp;								// temporary image for marking the blocks
+	// png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
-	unsigned int count = 0;
+	// unsigned int count = 0;
 	block_t ref_block;
 	block_t cmp_block;
 	double d;	// block distance
@@ -1049,9 +1047,9 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// read temporary image
-	if (png_read(&tmp, infile) != 0) {
-		return 1;
-	}
+	// if (png_read(&tmp, infile) != 0) {
+	// 	return 1;
+	// }
 
 	// control color type
 	if (img.color != PNG_COLOR_TYPE_RGB) {
@@ -1134,10 +1132,10 @@ int bm3d (char* const infile, 			// name of input file
 					return 1;
 				}
 
-				png_copy_values (&tmp, &img);
+				// png_copy_values (&tmp, &img);
 			
-				mark_search_window (&tmp, &ref_block, h_search, v_search);
-				mark_ref_block (&tmp, &ref_block);
+				// mark_search_window (&tmp, &ref_block, h_search, v_search);
+				// mark_ref_block (&tmp, &ref_block);
 
 				for (l=0; l<img.height; l=l+block_step) {
 					for (k=0; k<img.width; k=k+block_step) {
@@ -1161,9 +1159,7 @@ int bm3d (char* const infile, 			// name of input file
 									return 1;
 								}
 
-								if (mark_cmp_block (&tmp, &cmp_block) != 0) {
-									return 1;
-								}
+								// mark_cmp_block (&tmp, &cmp_block);
 							}
 						}
 					}
@@ -1176,15 +1172,15 @@ int bm3d (char* const infile, 			// name of input file
 
 				// write image with marked group in it
 				// set filename for noisy yuv output image
-				if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
-					generate_error ("Unable to process output filename...");
-					return 1;
-				}
+				// if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
+				// 	generate_error ("Unable to process output filename...");
+				// 	return 1;
+				// }
 
 				// write output image
-				if (png_write(&tmp, outfile) != 0) {
-					return 1;
-				}
+				// if (png_write(&tmp, outfile) != 0) {
+				// 	return 1;
+				// }
 
 
 				group = 0; //EVIL, cause same pointer
@@ -1192,12 +1188,12 @@ int bm3d (char* const infile, 			// name of input file
 		}
 	}
 
+	bm_end = clock();
+	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+
 	if (print_list(y_list, "grp/org/", "group") != 0) {
 		return 1;
 	}
-
-	bm_end = clock();
-	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 
 	// set filename for txt-file of groups
 	if (get_output_filename (outfile, "bms/", "block_matching_statistics", "csv", block_size) != 0) {
@@ -1215,7 +1211,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... number of groups in list: %d\n", list_length(&y_list));
 	printf ("[INFO] ... elapsed time: %f\n\n", time);
 
-	/*
+	
 	// perform actual denoising of the actual block group (regarding to one ref_block)
 	printf ("[INFO] ... launch of denoising...\n");
 
@@ -1225,6 +1221,7 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	printf ("[INFO] ... extracting blocks from chrominance channels...\n");
 	// obtain the pixel values from the u- and v-channel of the image
 	if (get_chrom(&img, &y_list, &u_list, &v_list)) {
 		return 1;
@@ -1294,7 +1291,7 @@ int bm3d (char* const infile, 			// name of input file
 
 	// final estimates
 	printf ("[INFO] ... end of denoising...\n\n");
-	*/
+	
 
 	// convert colorspace from YUV back to RGB
 	printf ("[INFO] ... launch of color conversion...\n");
