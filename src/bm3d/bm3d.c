@@ -806,7 +806,7 @@ void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], 
 	fprintf (fd, "\n\n\n");
 }
 
-int determine_estimates (list_t const list, int const sigma) {
+int determine_estimates (list_t const list, int const sigma, char* const path) {
 	FILE* fd = 0;
 	char outfile[40];
 	group_node_t* tmp = list;
@@ -822,7 +822,7 @@ int determine_estimates (list_t const list, int const sigma) {
 		double arr[z][len][len];
 
 		//obtain output filename
-		if (get_output_filename (outfile, "dns/grp/", "group", "txt", ++count) != 0) {
+		if (get_output_filename (outfile, path, "group", "txt", ++count) != 0) {
 			generate_error ("Unable to process output filename for group...");
 			return 1;
 		}
@@ -1243,19 +1243,19 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... determining local estimates...\n");
 
 	printf ("[INFO] ... luminance channel...\n");
-	if (determine_estimates(y_list, sigma) != 0) {
+	if (determine_estimates(y_list, sigma, "dns/grp/y/") != 0) {
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 1...\n");
-	if (determine_estimates(u_list, sigma) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 1...\n");
+	// if (determine_estimates(u_list, sigma, "dns/grp/u/") != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ... chrominance channel 2...\n");
-	if (determine_estimates(v_list, sigma) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 2...\n");
+	// if (determine_estimates(v_list, sigma, "dns/grp/v/") != 0) {
+	// 	return 1;
+	// }
 
 	if (print_list(y_list, "grp/est/y/", "group") != 0) {
 		return 1;
