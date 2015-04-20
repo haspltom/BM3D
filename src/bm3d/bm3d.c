@@ -1233,7 +1233,7 @@ int bm3d (char* const infile, 			// name of input file
 
 				// write image with marked group in it
 				// set filename for noisy yuv output image
-				if (get_output_filename (outfile, "img/rgb/bks/", "group", "png", ++count) != 0) {
+				if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
 					generate_error ("Unable to process output filename...");
 					return 1;
 				}
