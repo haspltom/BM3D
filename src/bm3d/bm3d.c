@@ -148,7 +148,7 @@ int get_block (png_img* img,				// input image
 		for (i=0; i<block->block_size; ++i) {
 			tmp = &(row[(i+x)*3]);
 
-			block->data[i][j] = (double)tmp[channel];
+			block->data[j][i] = (double)tmp[channel];
 		}
 	}
 
@@ -360,7 +360,7 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 		tmp_block = tmp->group;
 		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
 
-		if (!strcmp(path, "grp/est/")) {
+		if (!strcmp(path, "grp/est/y/") || !strcmp(path, "grp/est/u/") || !strcmp(path, "grp/est/v/")) {
 			fprintf (fd, "[INFO] ... weight of group: %f\n", tmp->weight);
 		}
 
@@ -907,6 +907,40 @@ int buffer2file (unsigned int const width, unsigned int const height, double buf
 	return 0;
 }
 
+int intbuf2file (unsigned int const width, unsigned int const height, unsigned int const buf[width][height], char* const path, char* const prefix) {
+	FILE* fd = 0;
+	char outfile[40];
+	int i, j;
+
+	//obtain output filename
+	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
+		generate_error ("Unable to process output filename for buffer...");
+		return 1;
+	}
+
+	fd = fopen (outfile, "w");
+	
+	if (fd == NULL) {
+		generate_error ("Unable to open file for printing buffer...");
+		return 1;
+	}
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", prefix);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (j=0; j<height; ++j) {
+		for (i=0; i<width; ++i) {
+			fprintf (fd, "%d ", buf[j][i]);
+		}
+		fprintf (fd, "\n");
+	}
+
+	fclose (fd);
+
+	return 0;
+}
+
 int aggregate(png_img* img, list_t* list, unsigned int channel) {
 	group_node_t* tmp = *list;
 	node_t* group;
@@ -914,18 +948,17 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 	double w;							// weight of actual processed group
 	double ebuf[img->width][img->height];
 	double wbuf[img->width][img->height];
+	unsigned int estbuf[img->width][img->height];
 	int i, j;
 	int x, y, bs;
 	png_byte* row;
 	png_byte* pix;
 
-	printf ("width: %d\nheight: %d\n", img->width, img->height);
 
 	while (tmp != NULL) {
 		group = tmp->group;
 		w = tmp->weight;
 		// if (block->x==15 && block->y==15) printf ("x,y: %d %d\n", block->x, block->y);
-		// printf ("weight: %f\n", tmp->weight);
 		
 		while (group != NULL) {
 			block = &group->block;
@@ -934,14 +967,15 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 			bs = block->block_size;
 
 			// iterate over current block and extract values
-			for (j=0; j<block->block_size; ++j) {
-				for (i=0; i<block->block_size; ++i) {
-					// if (block->x==15 && block->y==15) {
-						// printf ("%f ", block->data[j][i]);
+			for (j=0; j<bs; ++j) {
+				for (i=0; i<bs; ++i) {
+					// if (block->x==14 && block->y==14) {
+						// printf ("x,y: %d %d\n", block->x, block->y);
+						// printf ("block->data: %f\n", block->data[j][i]);
 						ebuf[j+y-(bs/2)][i+x-(bs/2)] += block->data[j][i] * tmp->weight;
 						wbuf[j+y-(bs/2)][i+x-(bs/2)] += tmp->weight;
 						// ebuf[j][i] += block->data[j][i];
-						// printf ("%f ", ebuf[j][i]);
+						// printf ("ebuf: %f\n", ebuf[j][i]);
 					// }
 				}
 				// if (block->x==15 && block->y==15) printf ("\n");
@@ -962,22 +996,26 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 		return 1;
 	}	
 
-	double max = 0.0;
+	int maxest = 0;
+	int minest = 255;
 
 	// determine estimates by dividing ebuf with wbuf
 	for (j=0; j<img->height; ++j) {
 		for (i=0; i<img->width; ++i) {
 			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
-				ebuf[j][i] /= wbuf[j][i];
-				max = (ebuf[j][i] >= max) ? ebuf[j][i] : max;
+				estbuf[j][i] = limit((int)(ebuf[j][i] / wbuf[j][i]));
+				// printf ("estbuf[%d][%d]: %d\n", j, i, estbuf[j][i]);
+				maxest = (estbuf[j][i] >= maxest) ? estbuf[j][i] : maxest;
+				minest = (estbuf[j][i] <= minest) ? estbuf[j][i] : minest;
 			}
 		}
 	}
 
-	printf ("max est: %f\n", max);
+	printf ("max est: %d\n", maxest);
+	printf ("min est: %d\n", minest);
 
 	// write buffer with local estimates to file
-	if (buffer2file(img->width, img->height, ebuf, "dns/", "estimates") != 0) {
+	if (intbuf2file(img->width, img->height, estbuf, "dns/", "estimates") != 0) {
 		return 1;
 	}	
 
@@ -987,7 +1025,7 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 
 		for (i=0; i<img->width; ++i) {
 			pix = &(row[i*3]);
-			pix[channel] = (ebuf[j][i] != 0.0) ? ebuf[j][i] : pix[channel];
+			pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
 		}
 	}
 	
@@ -1277,15 +1315,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 1...\n");
-	if (aggregate(&img, &u_list, 1) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 1...\n");
+	// if (aggregate(&img, &u_list, 1) != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ... chrominance channel 2...\n");
-	if (aggregate(&img, &v_list, 2) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 2...\n");
+	// if (aggregate(&img, &v_list, 2) != 0) {
+	// 	return 1;
+	// }
 
 	// Wiener filtering
 
