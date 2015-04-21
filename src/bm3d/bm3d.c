@@ -616,6 +616,7 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sig
 
 // method, which performs the block-matching for a given channel
 int block_matching (png_img* img,
+						  png_img* tmp,
 						  unsigned int const b_size,
 						  unsigned int const b_step,
 						  unsigned int const sigma,
@@ -624,13 +625,15 @@ int block_matching (png_img* img,
 						  double const th_2d,
 						  double const tau_2d,
 						  unsigned int const channel,
+						  unsigned int block_marking,
 						  list_t* list) {
 	int i, j, k, l;
 	block_t ref_block;
 	block_t cmp_block;
 	double d;	// block distance
 	group_t group = 0;						// group, which holds a set of similar blocks
-
+	int count = 0;
+	char outfile[40];							// universally used output-filename
 
 	// allocate block memory
 	if (new_block_struct(b_size, &ref_block) != 0) {
@@ -659,11 +662,12 @@ int block_matching (png_img* img,
 				if (append_block (&group, &ref_block, 0.0) != 0) {
 					return 1;
 				}
-
-				// png_copy_values (&tmp, img);
-			
-				// mark_search_window (&tmp, &ref_block, h_search, v_search);
-				// mark_ref_block (&tmp, &ref_block);
+				
+				if (block_marking) {
+					png_copy_values (tmp, img);
+					mark_search_window (tmp, &ref_block, h_search, v_search);
+					mark_ref_block (tmp, &ref_block);
+				}
 
 				for (l=0; l<img->height; l=l+b_step) {
 					for (k=0; k<img->width; k=k+b_step) {
@@ -687,7 +691,9 @@ int block_matching (png_img* img,
 									return 1;
 								}
 
-								// mark_cmp_block (&tmp, &cmp_block);
+								if (block_marking) {
+									mark_cmp_block (tmp, &cmp_block);
+								}
 							}
 						}
 					}
@@ -698,18 +704,19 @@ int block_matching (png_img* img,
 					return 1;
 				}
 
-				// write image with marked group in it
-				// set filename for noisy yuv output image
-				// if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
-				// 	generate_error ("Unable to process output filename...");
-				// 	return 1;
-				// }
+				if (block_marking) {
+					// write image with marked group in it
+					// set filename for noisy yuv output image
+					if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
+						generate_error ("Unable to process output filename...");
+						return 1;
+					}
 
-				// write output image
-				// if (png_write(&tmp, outfile) != 0) {
-				// 	return 1;
-				// }
-
+					// write output image
+					if (png_write(tmp, outfile) != 0) {
+						return 1;
+					}
+				}
 
 				group = 0; //EVIL, cause same pointer
 			}
@@ -1184,10 +1191,9 @@ int bm3d (char* const infile, 			// name of input file
 			 double const tau_2d, 			// match value for block-matching
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
-	// png_img tmp;								// temporary image for marking the blocks
+	png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
-	// unsigned int count = 0;
 	list_t y_list = 0;						// list of groups	of the y-channel
 	list_t u_list = 0;						// list of groups of the u-channel
 	list_t v_list = 0;						// list of groups of the v-channel
@@ -1200,9 +1206,9 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// read temporary image
-	// if (png_read(&tmp, infile) != 0) {
-	// 	return 1;
-	// }
+	if (png_read(&tmp, infile) != 0) {
+		return 1;
+	}
 
 	// control color type
 	if (img.color != PNG_COLOR_TYPE_RGB) {
@@ -1247,16 +1253,47 @@ int bm3d (char* const infile, 			// name of input file
 
 	printf ("[INFO] ... end of color conversion...\n\n");
 
+	// block-matching for the three channels
 	printf ("[INFO] ... launch of block-matching...\n");
+
+	printf ("[INFO] ... luminance channel...\n");
+
 	bm_start = clock();
 
-	// block-matching for the luminance channel
-	if (block_matching(&img, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 0, &y_list) != 0) {
+	if (block_matching(&img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 0, 1, &y_list) != 0) {
 		return 1;
 	}
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+	printf ("[INFO] ... elapsed time: %f\n", time);
+	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list));
+
+	printf ("[INFO] ... chrominance channel 1...\n");
+
+	bm_start = clock();
+
+	if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 1, 0, &u_list) != 0) {
+		return 1;
+	}
+
+	bm_end = clock();
+	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+	printf ("[INFO] ... elapsed time: %f\n", time);
+	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
+
+	printf ("[INFO] ... chrominance channel 2...\n");
+
+	bm_start = clock();
+
+	if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 2, 0, &v_list) != 0) {
+		return 1;
+	}
+
+	bm_end = clock();
+	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+	printf ("[INFO] ... elapsed time: %f\n", time);
+	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
 
 	if (print_list(y_list, "grp/org/", "group") != 0) {
 		return 1;
@@ -1275,8 +1312,6 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ... end of block-matching...\n");
-	printf ("[INFO] ... number of groups in list: %d\n", list_length(&y_list));
-	printf ("[INFO] ... elapsed time: %f\n\n", time);
 
 	
 	// perform actual denoising of the actual block group (regarding to one ref_block)
@@ -1284,15 +1319,26 @@ int bm3d (char* const infile, 			// name of input file
 
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming blocks to maximum size...\n");
+	printf ("[INFO] ... luminance channel...\n");
 	if (trim_list(&y_list, max_blocks) != 0) {
 		return 1;
 	}
 
-	// obtain the pixel values from the u- and v-channel of the image
-	printf ("[INFO] ... extracting blocks from chrominance channels...\n");
-	if (get_chrom(&img, &y_list, &u_list, &v_list)) {
+	printf ("[INFO] ... chrominance channel 1...\n");
+	if (trim_list(&u_list, max_blocks) != 0) {
 		return 1;
 	}
+
+	printf ("[INFO] ... chrominance channel 2...\n");
+	if (trim_list(&v_list, max_blocks) != 0) {
+		return 1;
+	}
+
+	// obtain the pixel values from the u- and v-channel of the image
+	// printf ("[INFO] ... extracting blocks from chrominance channels...\n");
+	// if (get_chrom(&img, &y_list, &u_list, &v_list)) {
+	// 	return 1;
+	// }
 
 	if (print_list(y_list, "grp/trm/y/", "group") != 0) {
 		return 1;
