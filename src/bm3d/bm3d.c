@@ -615,18 +615,18 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sig
 }
 
 // method, which performs the block-matching for a given channel
-int block_matching (png_img* img,
-						  png_img* tmp,
-						  unsigned int const b_size,
-						  unsigned int const b_step,
-						  unsigned int const sigma,
-						  unsigned int const h_search,
-						  unsigned int const v_search,
-						  double const th_2d,
-						  double const tau_2d,
-						  unsigned int const channel,
-						  unsigned int block_marking,
-						  list_t* list) {
+int block_matching_ht (png_img* img,
+						     png_img* tmp,
+						     unsigned int const b_size,
+						     unsigned int const b_step,
+						     unsigned int const sigma,
+						     unsigned int const h_search,
+						     unsigned int const v_search,
+						     double const th_2d,
+						     double const tau_2d,
+						     unsigned int const channel,
+						     unsigned int block_marking,
+						     list_t* list) {
 	int i, j, k, l;
 	block_t ref_block;
 	block_t cmp_block;
@@ -939,7 +939,7 @@ void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], 
 	fprintf (fd, "\n\n\n");
 }
 
-int determine_estimates (list_t const list, int const sigma, char* const path) {
+int determine_estimates_ht (list_t const list, int const sigma, char* const path) {
 	FILE* fd = 0;
 	char outfile[40];
 	group_node_t* tmp = list;
@@ -1180,6 +1180,21 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 	return 0;
 }
 
+// Wiener Stuff -----------------------------------------------
+double mean_2d(unsigned int const bs, double mat[bs][bs]) {
+	double sum = 0.0;
+	int i, j;
+
+	for (j=0; j<bs; ++j) {
+		for (i=0; i<bs; ++i) {
+			sum += mat[j][i];
+		}
+	}
+
+	return sum / (bs*bs);
+}
+
+
 int bm3d (char* const infile, 			// name of input file
 			 int const block_size, 			// size of internal processed blocks
 			 int const block_step, 			// step size between blocks
@@ -1200,6 +1215,9 @@ int bm3d (char* const infile, 			// name of input file
 	clock_t bm_start, bm_end;				// time variables for block matching start and end
 	double time;
 
+	// ----------------------------------------------------------------------
+	// INPUT READING AND VALIDATION
+	// ----------------------------------------------------------------------
 	// read input image
 	if (png_read(&img, infile) != 0) {
 		return 1;
@@ -1222,7 +1240,9 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// print status information on the console
+	// ----------------------------------------------------------------------
+	// PRINTING OF STATUS INFORMATION
+	// ----------------------------------------------------------------------
 	printf ("[INFO] ... .............................................\n");
 	printf ("[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
 	printf ("[INFO] ... block size: %d\n", block_size);
@@ -1236,7 +1256,10 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... threshold 3D: %f\n", th_3d);
 	printf ("[INFO] ... .............................................\n\n");
 
-	// convert colorspace from RGB to YUV
+
+	// ----------------------------------------------------------------------
+	// COLORSPACE CONVERSION & WRITEBACK
+	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of color conversion...\n");
 	rgb2yuv (&img);
 
@@ -1253,14 +1276,15 @@ int bm3d (char* const infile, 			// name of input file
 
 	printf ("[INFO] ... end of color conversion...\n\n");
 
-	// block-matching for the three channels
+
+	// ----------------------------------------------------------------------
+	// BLOCK-MATCHING FOR HARD-THRESHOLDING
+	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of block-matching...\n");
-
 	printf ("[INFO] ... luminance channel...\n");
-
 	bm_start = clock();
 
-	if (block_matching(&img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 0, 1, &y_list) != 0) {
+	if (block_matching_ht(&img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 0, 1, &y_list) != 0) {
 		return 1;
 	}
 
@@ -1273,7 +1297,7 @@ int bm3d (char* const infile, 			// name of input file
 
 	// bm_start = clock();
 
-	// if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 1, 0, &u_list) != 0) {
+	// if (block_matching_ht(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 1, 0, &u_list) != 0) {
 	// 	return 1;
 	// }
 
@@ -1286,7 +1310,7 @@ int bm3d (char* const infile, 			// name of input file
 
 	// bm_start = clock();
 
-	// if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 2, 0, &v_list) != 0) {
+	// if (block_matching_ht(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 2, 0, &v_list) != 0) {
 	// 	return 1;
 	// }
 
@@ -1310,12 +1334,6 @@ int bm3d (char* const infile, 			// name of input file
 		generate_error ("Unable to add values to csv-file...");
 		return 1;
 	}
-
-	printf ("[INFO] ... end of block-matching...\n");
-
-	
-	// perform actual denoising of the actual block group (regarding to one ref_block)
-	printf ("[INFO] ... launch of denoising...\n");
 
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming blocks to maximum size...\n");
@@ -1352,21 +1370,27 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// determine local estimates
-	printf ("[INFO] ... determining local estimates...\n");
+	printf ("[INFO] ... end of block-matching...\n");
 
+	
+	// ----------------------------------------------------------------------
+	// IMAGE-DENOISING STEP 1: HARD-THRESHOLDING
+	// ----------------------------------------------------------------------
+	printf ("[INFO] ... launch of denoising for hard-thresholding...\n");
+	printf ("[INFO] ... determining local estimates...\n");
 	printf ("[INFO] ... luminance channel...\n");
-	if (determine_estimates(y_list, sigma, "dns/y/grp/") != 0) {
+
+	if (determine_estimates_ht(y_list, sigma, "dns/y/grp/") != 0) {
 		return 1;
 	}
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (determine_estimates(u_list, sigma, "dns/u/grp/") != 0) {
+	// if (determine_estimates_ht(u_list, sigma, "dns/u/grp/") != 0) {
 	// 	return 1;
 	// }
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (determine_estimates(v_list, sigma, "dns/v/grp/") != 0) {
+	// if (determine_estimates_ht(v_list, sigma, "dns/v/grp/") != 0) {
 	// 	return 1;
 	// }
 
@@ -1382,10 +1406,12 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// aggregation
+	// ----------------------------------------------------------------------
+	// AGGREGATION STEP 1: HARD-THRESHOLDING
+	// ----------------------------------------------------------------------
 	printf ("[INFO] ... aggregating local estimates...\n");
-	
 	printf ("[INFO] ... luminance channel...\n");
+
 	if (aggregate(&img, &y_list, 0) != 0) {
 		return 1;
 	}
@@ -1400,13 +1426,19 @@ int bm3d (char* const infile, 			// name of input file
 	// 	return 1;
 	// }
 
-	// Wiener filtering
+	// ----------------------------------------------------------------------
+	// IMAGE-DENOISING STEP 2: WIENER-FILTERING
+	// ----------------------------------------------------------------------
 
-	// final estimates
+	// ----------------------------------------------------------------------
+	// AGGREGATION STEP 2: WIENER-FILTERING
+	// ----------------------------------------------------------------------
+
 	printf ("[INFO] ... end of denoising...\n\n");
 	
-
-	// convert colorspace from YUV back to RGB
+	// ----------------------------------------------------------------------
+	// COLORSPACE CONVERSION & WRITEBACK
+	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of color conversion...\n");
 	yuv2rgb (&img);
 
@@ -1423,7 +1455,9 @@ int bm3d (char* const infile, 			// name of input file
 
 	printf ("[INFO] ... end of color conversion...\n\n");
 
-	// free allocated memory
+	// ----------------------------------------------------------------------
+	// FREEING DYNAMICALY ALLOCATED MEMORY
+	// ----------------------------------------------------------------------
 	png_free_mem (&img);
 
 	return 0;
