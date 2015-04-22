@@ -1125,6 +1125,7 @@ int block_matching (char* const kind,
 	double d;	// block distance
 	group_t group = 0;						// group, which holds a set of similar blocks
 	int count = 0;
+	char path[20];								// path is set according to 'ht' or 'wnr'
 	char outfile[40];							// universally used output-filename
 
 	// allocate block memory
@@ -1198,8 +1199,10 @@ int block_matching (char* const kind,
 
 				if (block_marking) {
 					// write image with marked group in it
+					sprintf (path, "img/yuv/grp/%s/", kind);
+
 					// set filename for noisy yuv output image
-					if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
+					if (get_output_filename (outfile, path, "group", "png", ++count) != 0) {
 						generate_error ("Unable to process output filename...");
 						return 1;
 					}
