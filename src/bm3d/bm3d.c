@@ -580,152 +580,6 @@ double l2_norm (int const bs, double const mat[bs][bs]) {
 	return sqrt (sum);
 }
 
-
-// performs a check, whether two given blocks are similar
-double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sigma, double const th_2d) {
-	int const bs = ref_block->block_size;
-	double ref_mat[bs][bs];
-	double cmp_mat[bs][bs];
-	double sub_mat[bs][bs];
-	double distance = 0.0;
-
-	// subtract 128 for DCT transformation
-	shift_values (bs, ref_block, ref_mat);
-	shift_values (bs, cmp_block, cmp_mat);
-
-	// perform DCT on reference block by two matrix multiplications
-	dct_2d (bs, ref_mat);
-
-	// perform DCT on compare block by two matrix multiplications
-	dct_2d (bs, cmp_mat);
-
-	// perform thresholding on reference block
-	hard_threshold_2d (bs, ref_mat, th_2d, sigma);
-
-	// perform thresholding on compare block
-	hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
-
-	// subtract compare block from reference block
-	subtract_blocks (bs, ref_mat, cmp_mat, sub_mat);
-
-	// perform L2 norm on the difference of the two matrices
-	distance = l2_norm(bs, sub_mat) / (double)bs;
-
-	return distance;
-}
-
-// method, which performs the block-matching for a given channel
-int block_matching_ht (png_img* img,
-						     png_img* tmp,
-						     unsigned int const b_size,
-						     unsigned int const b_step,
-						     unsigned int const sigma,
-						     unsigned int const h_search,
-						     unsigned int const v_search,
-						     double const th_2d,
-						     double const tau_2d,
-						     unsigned int const channel,
-						     unsigned int block_marking,
-						     list_t* list) {
-	int i, j, k, l;
-	block_t ref_block;
-	block_t cmp_block;
-	double d;	// block distance
-	group_t group = 0;						// group, which holds a set of similar blocks
-	int count = 0;
-	char outfile[40];							// universally used output-filename
-
-	// allocate block memory
-	if (new_block_struct(b_size, &ref_block) != 0) {
-		return 1;
-	}
-	
-	if (new_block_struct(b_size, &cmp_block) != 0) {
-		return 1;
-	}
-
-	// compare blocks according to the sliding-window manner
-	for (j=0; j<img->height; j=j+b_step) {
-		for (i=0; i<img->width; i=i+b_step) {
-
-			// obtain refernce block
-			if (!exceeds_image_dimensions(img->width, img->height, b_size, i, j)) { 
-
-				if (get_block (img, channel, &ref_block, i-(b_size/2), j-(b_size/2)) != 0) {
-					return 1;
-				}
-				
-				// printf ("\n");
-				// printf ("-----------------------------------------------------\n");
-				// printf ("new reference block with indices (%d/%d) obtained...\n", i, j);
-				// printf ("-----------------------------------------------------\n");
-				if (append_block (&group, &ref_block, 0.0) != 0) {
-					return 1;
-				}
-				
-				if (block_marking) {
-					png_copy_values (tmp, img);
-					mark_search_window (tmp, &ref_block, h_search, v_search);
-					mark_ref_block (tmp, &ref_block);
-				}
-
-				for (l=0; l<img->height; l=l+b_step) {
-					for (k=0; k<img->width; k=k+b_step) {
-
-						// obtain block to compare to reference block
-						if (!(exceeds_image_dimensions(img->width, img->height, b_size, k, l)) && 								
-							 !(exceeds_search_window(img->width, img->height, b_size, h_search, v_search, i, j, k, l)) &&
-							 !((i==k) && (j==l))) {			// must be different from reference block
-
-							if (get_block (img, channel, &cmp_block, k-(b_size/2), l-(b_size/2)) != 0) {
-								return 1;
-							}
-							// printf ("(%d/%d)\n", k, l);
-
-							// compare blocks for similarity
-							d = get_block_distance (&ref_block, &cmp_block, sigma, th_2d);
-							
-							// decide whether block similarity is sufficient
-							if (d < tau_2d*255) {
-								if (append_block (&group, &cmp_block, d) != 0) {
-									return 1;
-								}
-
-								if (block_marking) {
-									mark_cmp_block (tmp, &cmp_block);
-								}
-							}
-						}
-					}
-				}
-
-				// add group of similar blocks to list
-				if (append_group (list, &group) != 0) {
-					return 1;
-				}
-
-				if (block_marking) {
-					// write image with marked group in it
-					// set filename for noisy yuv output image
-					if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
-						generate_error ("Unable to process output filename...");
-						return 1;
-					}
-
-					// write output image
-					if (png_write(tmp, outfile) != 0) {
-						return 1;
-					}
-				}
-
-				group = 0; //EVIL, cause same pointer
-			}
-		}
-	}
-
-	return 0;
-}
-
 int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 	group_node_t* tmp = *ylist;
 	node_t* group;
@@ -1181,19 +1035,188 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 }
 
 // Wiener Stuff -----------------------------------------------
-double mean_2d(unsigned int const bs, double mat[bs][bs]) {
+double mean_2d(block_t* block) {
+	int bs = block->block_size;
 	double sum = 0.0;
 	int i, j;
 
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
-			sum += mat[j][i];
+			sum += block->data[j][i];
 		}
 	}
 
 	return sum / (bs*bs);
 }
 
+void subtract_mean (int const bs, block_t* block, double mat[bs][bs]) {
+	int i, j;
+
+	for (j=0; j<bs; ++j) {
+		for (i=0; i<bs; ++i) {
+			mat[i][j] = block->data[i][j] - mean_2d(block);
+		}
+	}
+}
+
+// performs a check, whether two given blocks are similar
+double get_block_distance (char* const kind, block_t* ref_block, block_t* cmp_block, int const sigma, double const th_2d) {
+	int const bs = ref_block->block_size;
+	double ref_mat[bs][bs];
+	double cmp_mat[bs][bs];
+	double sub_mat[bs][bs];
+	double distance = 0.0;
+
+	if (!strcmp(kind, "ht")) {
+		// subtract 128 for DCT transformation
+		shift_values (bs, ref_block, ref_mat);
+		shift_values (bs, cmp_block, cmp_mat);
+
+		// perform DCT on reference block by two matrix multiplications
+		dct_2d (bs, ref_mat);
+
+		// perform DCT on compare block by two matrix multiplications
+		dct_2d (bs, cmp_mat);
+
+		// perform thresholding on reference block
+		hard_threshold_2d (bs, ref_mat, th_2d, sigma);
+
+		// perform thresholding on compare block
+		hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
+	}
+
+	else if (!strcmp(kind, "wnr")) {
+		// subtract the mean values from the regarding blocks
+		subtract_mean (bs, ref_block, ref_mat);
+		subtract_mean (bs, cmp_block, cmp_mat);
+	}
+
+	else {
+		generate_error ("Wrong description of block-matching kind...");
+		return -1.0;
+	}
+
+	// subtract compare block from reference block
+	subtract_blocks (bs, ref_mat, cmp_mat, sub_mat);
+
+	// perform L2 norm on the difference of the two matrices
+	distance = l2_norm(bs, sub_mat) / (double)bs;
+
+	return distance;
+}
+
+// method, which performs the block-matching for a given channel
+int block_matching (char* const kind,
+						  png_img* img,
+						  png_img* tmp,
+						  unsigned int const b_size,
+						  unsigned int const b_step,
+						  unsigned int const sigma,
+						  unsigned int const h_search,
+						  unsigned int const v_search,
+						  double const th_2d,
+						  double const tau_match,
+						  unsigned int const channel,
+						  unsigned int block_marking,
+						  list_t* list) {
+	int i, j, k, l;
+	block_t ref_block;
+	block_t cmp_block;
+	double d;	// block distance
+	group_t group = 0;						// group, which holds a set of similar blocks
+	int count = 0;
+	char outfile[40];							// universally used output-filename
+
+	// allocate block memory
+	if (new_block_struct(b_size, &ref_block) != 0) {
+		return 1;
+	}
+	
+	if (new_block_struct(b_size, &cmp_block) != 0) {
+		return 1;
+	}
+
+	// compare blocks according to the sliding-window manner
+	for (j=0; j<img->height; j=j+b_step) {
+		for (i=0; i<img->width; i=i+b_step) {
+
+			// obtain refernce block
+			if (!exceeds_image_dimensions(img->width, img->height, b_size, i, j)) { 
+
+				if (get_block (img, channel, &ref_block, i-(b_size/2), j-(b_size/2)) != 0) {
+					return 1;
+				}
+				
+				// printf ("\n");
+				// printf ("-----------------------------------------------------\n");
+				// printf ("new reference block with indices (%d/%d) obtained...\n", i, j);
+				// printf ("-----------------------------------------------------\n");
+				if (append_block (&group, &ref_block, 0.0) != 0) {
+					return 1;
+				}
+				
+				if (block_marking) {
+					png_copy_values (tmp, img);
+					mark_search_window (tmp, &ref_block, h_search, v_search);
+					mark_ref_block (tmp, &ref_block);
+				}
+
+				for (l=0; l<img->height; l=l+b_step) {
+					for (k=0; k<img->width; k=k+b_step) {
+
+						// obtain block to compare to reference block
+						if (!(exceeds_image_dimensions(img->width, img->height, b_size, k, l)) && 								
+							 !(exceeds_search_window(img->width, img->height, b_size, h_search, v_search, i, j, k, l)) &&
+							 !((i==k) && (j==l))) {			// must be different from reference block
+
+							if (get_block (img, channel, &cmp_block, k-(b_size/2), l-(b_size/2)) != 0) {
+								return 1;
+							}
+							// printf ("(%d/%d)\n", k, l);
+
+							// compare blocks for similarity
+							d = get_block_distance (kind, &ref_block, &cmp_block, sigma, th_2d);
+							
+							// decide whether block similarity is sufficient
+							if (d < tau_match*255) {
+								if (append_block (&group, &cmp_block, d) != 0) {
+									return 1;
+								}
+
+								if (block_marking) {
+									mark_cmp_block (tmp, &cmp_block);
+								}
+							}
+						}
+					}
+				}
+
+				// add group of similar blocks to list
+				if (append_group (list, &group) != 0) {
+					return 1;
+				}
+
+				if (block_marking) {
+					// write image with marked group in it
+					// set filename for noisy yuv output image
+					if (get_output_filename (outfile, "img/yuv/grp/", "group", "png", ++count) != 0) {
+						generate_error ("Unable to process output filename...");
+						return 1;
+					}
+
+					// write output image
+					if (png_write(tmp, outfile) != 0) {
+						return 1;
+					}
+				}
+
+				group = 0; //EVIL, cause same pointer
+			}
+		}
+	}
+
+	return 0;
+}
 
 int bm3d (char* const infile, 			// name of input file
 			 int const block_size, 			// size of internal processed blocks
@@ -1203,15 +1226,18 @@ int bm3d (char* const infile, 			// name of input file
 			 int const h_search,				// horizontal width of search window
 			 int const v_search, 			// vertical width of search window
 			 double const th_2d,				// threshold for the 2D transformation
-			 double const tau_2d, 			// match value for block-matching
+			 double const tau_match, 			// match value for block-matching
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
 	png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
-	list_t y_list = 0;						// list of groups	of the y-channel
-	list_t u_list = 0;						// list of groups of the u-channel
-	list_t v_list = 0;						// list of groups of the v-channel
+	list_t y_list_ht = 0;					// list of groups	of the y-channel for the HT part
+	list_t u_list_ht = 0;					// list of groups of the u-channel for the HT part
+	list_t v_list_ht = 0;					// list of groups of the v-channel for the HT part
+	list_t y_list_wnr = 0;					// list of groups	of the y-channel for the WNR part
+	list_t u_list_wnr = 0;					// list of groups of the u-channel for the WNR part
+	list_t v_list_wnr = 0;					// list of groups of the v-channel for the WNR part
 	clock_t bm_start, bm_end;				// time variables for block matching start and end
 	double time;
 
@@ -1252,7 +1278,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... horizontal search window size: %d\n", h_search);
 	printf ("[INFO] ... vertical search window size: %d\n", v_search);
 	printf ("[INFO] ... threshold 2D: %f\n", th_2d);
-	printf ("[INFO] ... tau-match 2D: %f\n", tau_2d);
+	printf ("[INFO] ... tau-match 2D: %f\n", tau_match);
 	printf ("[INFO] ... threshold 3D: %f\n", th_3d);
 	printf ("[INFO] ... .............................................\n\n");
 
@@ -1278,48 +1304,48 @@ int bm3d (char* const infile, 			// name of input file
 
 
 	// ----------------------------------------------------------------------
-	// BLOCK-MATCHING FOR HARD-THRESHOLDING
+	// BLOCK-MATCHING STEP 1: HARD-THRESHOLDING
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... launch of block-matching...\n");
+	printf ("[INFO] ... launch of block-matching step 1...\n");
 	printf ("[INFO] ... luminance channel...\n");
 	bm_start = clock();
 
-	if (block_matching_ht(&img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 0, 1, &y_list) != 0) {
+	if (block_matching("ht", &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list_ht) != 0) {
 		return 1;
 	}
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 	printf ("[INFO] ... elapsed time: %f\n", time);
-	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list));
+	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list_ht));
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
 
 	// bm_start = clock();
 
-	// if (block_matching_ht(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 1, 0, &u_list) != 0) {
+	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 1, 0, &u_list_ht) != 0) {
 	// 	return 1;
 	// }
 
 	// bm_end = clock();
 	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 	// printf ("[INFO] ... elapsed time: %f\n", time);
-	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
+	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list_ht));
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
 
 	// bm_start = clock();
 
-	// if (block_matching_ht(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 2, 0, &v_list) != 0) {
+	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 2, 0, &v_list_ht) != 0) {
 	// 	return 1;
 	// }
 
 	// bm_end = clock();
 	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 	// printf ("[INFO] ... elapsed time: %f\n", time);
-	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
+	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list_ht));
 
-	if (print_list(y_list, "grp/org/", "group") != 0) {
+	if (print_list(y_list_ht, "grp/org/", "group") != 0) {
 		return 1;
 	}
 
@@ -1330,7 +1356,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// add number of groups and computation time to txt-file for statistical evaluation
-	if (add_csv_line(outfile, block_step, list_length(&y_list), time) != 0) {
+	if (add_csv_line(outfile, block_step, list_length(&y_list_ht), time) != 0) {
 		generate_error ("Unable to add values to csv-file...");
 		return 1;
 	}
@@ -1338,39 +1364,39 @@ int bm3d (char* const infile, 			// name of input file
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming blocks to maximum size...\n");
 	printf ("[INFO] ... luminance channel...\n");
-	if (trim_list(&y_list, max_blocks) != 0) {
+	if (trim_list(&y_list_ht, max_blocks) != 0) {
 		return 1;
 	}
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (trim_list(&u_list, max_blocks) != 0) {
+	// if (trim_list(&u_list_ht, max_blocks) != 0) {
 	// 	return 1;
 	// }
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (trim_list(&v_list, max_blocks) != 0) {
+	// if (trim_list(&v_list_ht, max_blocks) != 0) {
 	// 	return 1;
 	// }
 
 	// obtain the pixel values from the u- and v-channel of the image
 	// printf ("[INFO] ... extracting blocks from chrominance channels...\n");
-	// if (get_chrom(&img, &y_list, &u_list, &v_list)) {
+	// if (get_chrom(&img, &y_list_ht, &u_list_ht, &v_list_ht)) {
 	// 	return 1;
 	// }
 
-	if (print_list(y_list, "grp/trm/y/", "group") != 0) {
+	if (print_list(y_list_ht, "grp/trm/y/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list, "grp/trm/u/", "group") != 0) {
+	if (print_list(u_list_ht, "grp/trm/u/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list, "grp/trm/v/", "group") != 0) {
+	if (print_list(v_list_ht, "grp/trm/v/", "group") != 0) {
 		return 1;
 	}
 
-	printf ("[INFO] ... end of block-matching...\n");
+	printf ("[INFO] ... end of block-matching step 1...\n\n");
 
 	
 	// ----------------------------------------------------------------------
@@ -1380,29 +1406,29 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... determining local estimates...\n");
 	printf ("[INFO] ... luminance channel...\n");
 
-	if (determine_estimates_ht(y_list, sigma, "dns/y/grp/") != 0) {
+	if (determine_estimates_ht(y_list_ht, sigma, "dns/y/grp/") != 0) {
 		return 1;
 	}
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (determine_estimates_ht(u_list, sigma, "dns/u/grp/") != 0) {
+	// if (determine_estimates_ht(u_list_ht, sigma, "dns/u/grp/") != 0) {
 	// 	return 1;
 	// }
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (determine_estimates_ht(v_list, sigma, "dns/v/grp/") != 0) {
+	// if (determine_estimates_ht(v_list_ht, sigma, "dns/v/grp/") != 0) {
 	// 	return 1;
 	// }
 
-	if (print_list(y_list, "grp/est/y/", "group") != 0) {
+	if (print_list(y_list_ht, "grp/est/y/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list, "grp/est/u/", "group") != 0) {
+	if (print_list(u_list_ht, "grp/est/u/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list, "grp/est/v/", "group") != 0) {
+	if (print_list(v_list_ht, "grp/est/v/", "group") != 0) {
 		return 1;
 	}
 
@@ -1412,19 +1438,50 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... aggregating local estimates...\n");
 	printf ("[INFO] ... luminance channel...\n");
 
-	if (aggregate(&img, &y_list, 0) != 0) {
+	if (aggregate(&img, &y_list_ht, 0) != 0) {
 		return 1;
 	}
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (aggregate(&img, &u_list, 1) != 0) {
+	// if (aggregate(&img, &u_list_ht, 1) != 0) {
 	// 	return 1;
 	// }
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (aggregate(&img, &v_list, 2) != 0) {
+	// if (aggregate(&img, &v_list_ht, 2) != 0) {
 	// 	return 1;
 	// }
+
+	// ----------------------------------------------------------------------
+	// BLOCK-MATCHING STEP 2: WIENER-FILTERING
+	// ----------------------------------------------------------------------
+	printf ("[INFO] ... launch of block-matching step 2...\n");
+	printf ("[INFO] ... luminance channel...\n");
+
+	bm_start = clock();
+
+	// if (block_matching("wnr", &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, 0.0, 0, 1, &y_list_wnr) != 0) {
+	// 	return 1;
+	// }
+
+	bm_end = clock();
+	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+	printf ("[INFO] ... elapsed time: %f\n", time);
+	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list_wnr));
+
+	// if (print_list(y_list_wnr, "grp/org/", "group") != 0) {
+	// 	return 1;
+	// }
+
+	// trim groups to maximal number of blocks
+	printf ("[INFO] ... trimming blocks to maximum size...\n");
+	printf ("[INFO] ... luminance channel...\n");
+	// if (trim_list(&y_list_wnr, max_blocks) != 0) {
+	// 	return 1;
+	// }
+
+	printf ("[INFO] ... end of block-matching step 2...\n\n");
+
 
 	// ----------------------------------------------------------------------
 	// IMAGE-DENOISING STEP 2: WIENER-FILTERING

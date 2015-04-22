@@ -40,7 +40,7 @@ extern int bm3d (char* const infile, 			// name of input file
 			 		  int const h_search,	// horizontal width of search window
 			 		  int const v_search,  // vertical width of search window
 					  double const th_2d,			// threshold for the 2D transformation
-					  double const tau_2d, 			// match value for block-matching
+					  double const tau_match, 			// match value for block-matching
 					  double const th_3d);			// threshold for the 3D transformtaion
 
 #endif // BM3D_H
