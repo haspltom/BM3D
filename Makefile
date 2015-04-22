@@ -1,6 +1,9 @@
 CC      = clang
 BIN     = noising param_gen bm3d
-DIRS    = objdir rgbdir yuvdir yuvgrpdir yuvgrphtdir yuvgrpwnrdir grpdir orgdir trmdir trydir trudir trvdir estdir esydir esudir esvdir resdir bmsdir dnsdir dnsydir dnsudir dnsvdir dnsgrpydir dnsgrpudir dnsgrpvdir
+DEFDIRS = objdir resdir bmsdir 
+IMGDIRS = rgbdir yuvdir yuvgrpdir yuvgrphtdir yuvgrpwnrdir
+GRPDIRS = grpdir orgdir trmdir trmhtdir trmwnrdir trydir trudir trvdir estdir esydir esudir esvdir
+DNSDIRS = dnsdir dnsydir dnsudir dnsvdir dnsgrpydir dnsgrpudir dnsgrpvdir
 SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
@@ -16,7 +19,7 @@ DNSDIR  = dns
 OBJ     := $(subst .$(EXT),.o,$(SRC))
 OBJ     := $(addprefix $(OBJDIR)/, $(OBJ))
  
-all: $(DIRS) $(BIN)
+all: $(DEFDIRS) $(IMGDIRS) $(GRPDIRS) $(DNSDIRS) $(BIN)
 
 objdir:
 	$(MKDIR) -p $(OBJDIR)
@@ -44,6 +47,12 @@ orgdir:
 
 trmdir:
 	$(MKDIR) -p $(GRPDIR)/trm
+
+trmhtdir:
+	$(MKDIR) -p $(GRPDIR)/trm/ht
+
+trmwnrdir:
+	$(MKDIR) -p $(GRPDIR)/trm/wnr
 
 trydir:
 	$(MKDIR) -p $(GRPDIR)/trm/y

@@ -1177,12 +1177,14 @@ int block_matching (char* const kind,
 
 							// compare blocks for similarity
 							d = get_block_distance (kind, &ref_block, &cmp_block, sigma, th_2d);
+							if (!strcmp(kind, "wnr")) printf ("distance: %f\ntaumatch: %f\n", d, tau_match*255);
 							
 							// decide whether block similarity is sufficient
 							if (d < tau_match*255) {
 								if (append_block (&group, &cmp_block, d) != 0) {
 									return 1;
 								}
+								if (!strcmp(kind, "wnr")) printf ("block appended...\n");
 
 								if (block_marking) {
 									mark_cmp_block (tmp, &cmp_block);
@@ -1463,9 +1465,9 @@ int bm3d (char* const infile, 			// name of input file
 
 	bm_start = clock();
 
-	// if (block_matching("wnr", &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, 0.0, 0, 1, &y_list_wnr) != 0) {
-	// 	return 1;
-	// }
+	if (block_matching("wnr", &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list_wnr) != 0) {
+		return 1;
+	}
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
