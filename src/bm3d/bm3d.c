@@ -1269,31 +1269,31 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... elapsed time: %f\n", time);
 	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list));
 
-	printf ("[INFO] ... chrominance channel 1...\n");
+	// printf ("[INFO] ... chrominance channel 1...\n");
 
-	bm_start = clock();
+	// bm_start = clock();
 
-	if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 1, 0, &u_list) != 0) {
-		return 1;
-	}
+	// if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 1, 0, &u_list) != 0) {
+	// 	return 1;
+	// }
 
-	bm_end = clock();
-	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	printf ("[INFO] ... elapsed time: %f\n", time);
-	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
+	// bm_end = clock();
+	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+	// printf ("[INFO] ... elapsed time: %f\n", time);
+	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
 
-	printf ("[INFO] ... chrominance channel 2...\n");
+	// printf ("[INFO] ... chrominance channel 2...\n");
 
-	bm_start = clock();
+	// bm_start = clock();
 
-	if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 2, 0, &v_list) != 0) {
-		return 1;
-	}
+	// if (block_matching(&img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_2d, 2, 0, &v_list) != 0) {
+	// 	return 1;
+	// }
 
-	bm_end = clock();
-	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	printf ("[INFO] ... elapsed time: %f\n", time);
-	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
+	// bm_end = clock();
+	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
+	// printf ("[INFO] ... elapsed time: %f\n", time);
+	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
 
 	if (print_list(y_list, "grp/org/", "group") != 0) {
 		return 1;
@@ -1324,15 +1324,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 1...\n");
-	if (trim_list(&u_list, max_blocks) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 1...\n");
+	// if (trim_list(&u_list, max_blocks) != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ... chrominance channel 2...\n");
-	if (trim_list(&v_list, max_blocks) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 2...\n");
+	// if (trim_list(&v_list, max_blocks) != 0) {
+	// 	return 1;
+	// }
 
 	// obtain the pixel values from the u- and v-channel of the image
 	// printf ("[INFO] ... extracting blocks from chrominance channels...\n");
@@ -1360,15 +1360,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 1...\n");
-	if (determine_estimates(u_list, sigma, "dns/u/grp/") != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 1...\n");
+	// if (determine_estimates(u_list, sigma, "dns/u/grp/") != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ... chrominance channel 2...\n");
-	if (determine_estimates(v_list, sigma, "dns/v/grp/") != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 2...\n");
+	// if (determine_estimates(v_list, sigma, "dns/v/grp/") != 0) {
+	// 	return 1;
+	// }
 
 	if (print_list(y_list, "grp/est/y/", "group") != 0) {
 		return 1;
@@ -1390,15 +1390,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 1...\n");
-	if (aggregate(&img, &u_list, 1) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 1...\n");
+	// if (aggregate(&img, &u_list, 1) != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ... chrominance channel 2...\n");
-	if (aggregate(&img, &v_list, 2) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ... chrominance channel 2...\n");
+	// if (aggregate(&img, &v_list, 2) != 0) {
+	// 	return 1;
+	// }
 
 	// Wiener filtering
 
