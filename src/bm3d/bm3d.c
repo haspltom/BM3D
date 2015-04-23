@@ -1035,28 +1035,52 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 }
 
 // Wiener Stuff -----------------------------------------------
-double mean_2d(block_t* block) {
-	int bs = block->block_size;
+int mean_2d(unsigned int const bs, block_t* block, double res[bs], unsigned int const dim) {
 	double sum = 0.0;
 	int i, j;
 
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			sum += block->data[j][i];
-		}
+	// check dimension parameter
+	if (!((dim==1) || (dim==2))) {
+		generate_error ("Wrong dimension for mean calculation...");
+		return 1;
 	}
 
-	return sum / (bs*bs);
+	for (j=0; j<bs; ++j) {
+		for (i=0; i<bs; ++i) {
+			sum += (dim==1) ? block->data[i][j] : block->data[j][i];
+		}
+		res[j] = sum / (double)bs;
+		sum = 0.0;
+	}
+
+	return 0;
 }
 
-void subtract_mean (int const bs, block_t* block, double mat[bs][bs]) {
+int subtract_mean (unsigned int const bs, block_t* block, double res[bs][bs], unsigned int const dim) {
 	int i, j;
+	double mean[bs];
+
+	// obtain mean values
+	if (mean_2d(bs, block, mean, dim) != 0) {
+		return 1;
+	}
 
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
-			mat[i][j] = block->data[i][j] - mean_2d(block);
+			if (dim == 1) {
+				res[i][j] = block->data[i][j] - mean[j];
+			}
+			else if (dim == 2) {
+				res[j][i] = block->data[j][i] - mean[j];
+			}
+			else {
+				generate_error ("Wrong dimension for mean calculation...");
+				return 1;
+			}
 		}
 	}
+
+	return 0;
 }
 
 // performs a check, whether two given blocks are similar
@@ -1087,8 +1111,10 @@ double get_block_distance (char* const kind, block_t* ref_block, block_t* cmp_bl
 
 	else if (!strcmp(kind, "wnr")) {
 		// subtract the mean values from the regarding blocks
-		subtract_mean (bs, ref_block, ref_mat);
-		subtract_mean (bs, cmp_block, cmp_mat);
+		if ((subtract_mean(bs, ref_block, ref_mat, 1) != 0) ||
+			 (subtract_mean(bs, cmp_block, cmp_mat, 1) != 0)) {
+			return 1;
+		}
 	}
 
 	else {
