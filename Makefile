@@ -1,9 +1,11 @@
 CC      = clang
 BIN     = noising param_gen bm3d
 DEFDIRS = objdir resdir bmsdir 
-IMGDIRS = rgbdir yuvdir yuvgrpdir yuvgrphtdir yuvgrpwnrdir
-GRPDIRS = grpdir orgdir trmdir trmhtdir trmwnrdir trydir trudir trvdir estdir esydir esudir esvdir
-DNSDIRS = dnsdir dnsydir dnsudir dnsvdir dnsgrpydir dnsgrpudir dnsgrpvdir
+IMGDIRS = rgbdir yuvgrphtdir yuvgrpwndir
+ORGDIRS = orghtydir orghtudir orghtvdir orgwnydir orgwnudir orgwnvdir 
+TRMDIRS = trmhtydir trmhtudir trmhtvdir trmwnydir trmwnudir trmwnvdir
+ESTDIRS = esthtydir esthtudir esthtvdir estwnydir estwnudir estwnvdir
+DNSDIRS = dnshtydir dnshtudir dnshtvdir dnswnydir dnswnudir dnswnvdir
 SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
@@ -19,7 +21,7 @@ DNSDIR  = dns
 OBJ     := $(subst .$(EXT),.o,$(SRC))
 OBJ     := $(addprefix $(OBJDIR)/, $(OBJ))
  
-all: $(DEFDIRS) $(IMGDIRS) $(GRPDIRS) $(DNSDIRS) $(BIN)
+all: $(DEFDIRS) $(IMGDIRS) $(ORGDIRS) $(TRMDIRS) $(ESTDIRS) $(DNSDIRS) $(BIN)
 
 objdir:
 	$(MKDIR) -p $(OBJDIR)
@@ -27,53 +29,65 @@ objdir:
 rgbdir:
 	$(MKDIR) -p $(IMGDIR)/rgb
 
-yuvdir:
-	$(MKDIR) -p $(IMGDIR)/yuv
-
-yuvgrpdir:
-	$(MKDIR) -p $(IMGDIR)/yuv/grp
-
 yuvgrphtdir:
 	$(MKDIR) -p $(IMGDIR)/yuv/grp/ht
 
-yuvgrpwnrdir:
+yuvgrpwndir:
 	$(MKDIR) -p $(IMGDIR)/yuv/grp/wnr
 
-grpdir:
-	$(MKDIR) -p $(GRPDIR)
+orghtydir:
+	$(MKDIR) -p $(GRPDIR)/org/ht/y
 
-orgdir:
-	$(MKDIR) -p $(GRPDIR)/org
+orghtudir:
+	$(MKDIR) -p $(GRPDIR)/org/ht/u
 
-trmdir:
-	$(MKDIR) -p $(GRPDIR)/trm
+orghtvdir:
+	$(MKDIR) -p $(GRPDIR)/org/ht/v
 
-trmhtdir:
-	$(MKDIR) -p $(GRPDIR)/trm/ht
+orgwnydir:
+	$(MKDIR) -p $(GRPDIR)/org/wnr/y
 
-trmwnrdir:
-	$(MKDIR) -p $(GRPDIR)/trm/wnr
+orgwnudir:
+	$(MKDIR) -p $(GRPDIR)/org/wnr/u
 
-trydir:
-	$(MKDIR) -p $(GRPDIR)/trm/y
+orgwnvdir:
+	$(MKDIR) -p $(GRPDIR)/org/wnr/v
 
-trudir:
-	$(MKDIR) -p $(GRPDIR)/trm/u
+trmhtydir:
+	$(MKDIR) -p $(GRPDIR)/trm/ht/y
 
-trvdir:
-	$(MKDIR) -p $(GRPDIR)/trm/v
+trmhtudir:
+	$(MKDIR) -p $(GRPDIR)/trm/ht/u
 
-estdir:
-	$(MKDIR) -p $(GRPDIR)/est
+trmhtvdir:
+	$(MKDIR) -p $(GRPDIR)/trm/ht/v
 
-esydir:
-	$(MKDIR) -p $(GRPDIR)/est/y
+trmwnydir:
+	$(MKDIR) -p $(GRPDIR)/trm/wnr/y
 
-esudir:
-	$(MKDIR) -p $(GRPDIR)/est/u
+trmwnudir:
+	$(MKDIR) -p $(GRPDIR)/trm/wnr/u
 
-esvdir:
-	$(MKDIR) -p $(GRPDIR)/est/v
+trmwnvdir:
+	$(MKDIR) -p $(GRPDIR)/trm/wnr/v
+
+esthtydir:
+	$(MKDIR) -p $(GRPDIR)/est/ht/y
+
+esthtudir:
+	$(MKDIR) -p $(GRPDIR)/est/ht/u
+
+esthtvdir:
+	$(MKDIR) -p $(GRPDIR)/est/ht/v
+
+estwnydir:
+	$(MKDIR) -p $(GRPDIR)/est/wnr/y
+
+estwnudir:
+	$(MKDIR) -p $(GRPDIR)/est/wnr/u
+
+estwnvdir:
+	$(MKDIR) -p $(GRPDIR)/est/wnr/v
 
 resdir:
 	$(MKDIR) -p $(RESDIR)
@@ -81,26 +95,23 @@ resdir:
 bmsdir:
 	$(MKDIR) -p $(BMSDIR)
 
-dnsdir:
-	$(MKDIR) -p $(DNSDIR)
+dnshtydir:
+	$(MKDIR) -p $(DNSDIR)/ht/y/grp
 
-dnsydir:
-	$(MKDIR) -p $(DNSDIR)/y
+dnshtudir:
+	$(MKDIR) -p $(DNSDIR)/ht/u/grp
 
-dnsudir:
-	$(MKDIR) -p $(DNSDIR)/u
+dnshtvdir:
+	$(MKDIR) -p $(DNSDIR)/ht/v/grp
 
-dnsvdir:
-	$(MKDIR) -p $(DNSDIR)/v
+dnswnydir:
+	$(MKDIR) -p $(DNSDIR)/wnr/y/grp
 
-dnsgrpydir:
-	$(MKDIR) -p $(DNSDIR)/y/grp
+dnswnudir:
+	$(MKDIR) -p $(DNSDIR)/wnr/u/grp
 
-dnsgrpudir:
-	$(MKDIR) -p $(DNSDIR)/u/grp
-
-dnsgrpvdir:
-	$(MKDIR) -p $(DNSDIR)/v/grp
+dnswnvdir:
+	$(MKDIR) -p $(DNSDIR)/wnr/v/grp
 
 noising: $(OBJDIR)/noising.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o
 	@echo "Link $< ..."
