@@ -12,7 +12,8 @@
 //------------ METHODS FOR COLORSPACE CONVERSION ------------
 // function that make the coversion from RGB to YUV
 void rgb2yuv (png_img* img) {
-	int i, j, y, u, v, r, g, b;
+	int i, j;
+	unsigned int y, u, v, r, g, b;
 	png_byte* row;
 	png_byte* tmp;
 
@@ -28,9 +29,9 @@ void rgb2yuv (png_img* img) {
 			b = tmp[2];
 
 			// convert pixel elements
-			y = limit (0 + 0.299*r + 0.587*g + 0.114*b);
-			u = limit (128 - 0.168736*r - 0.331264*g + 0.5*b);
-			v = limit (128 + 0.5*r - 0.418688*g - 0.081312*b);
+			y = (unsigned int)(limit(0 + 0.299*r + 0.587*g + 0.114*b));
+			u = (unsigned int)(limit(128 - 0.168736*r - 0.331264*g + 0.5*b));
+			v = (unsigned int)(limit(128 + 0.5*r - 0.418688*g - 0.081312*b));
 
 			// write back YUV values
 			tmp[0] = y;
@@ -42,7 +43,8 @@ void rgb2yuv (png_img* img) {
 
 // function that make the coversion from YUV to RGB
 void yuv2rgb (png_img* img) {
-	int i, j, y, u, v, r, g, b;
+	int i, j;
+	unsigned int y, u, v, r, g, b;
 	png_byte* row;
 	png_byte* tmp;
 
@@ -58,9 +60,9 @@ void yuv2rgb (png_img* img) {
 			v = tmp[2] - 128;
 			
 			// convert pixel elements
-			r = limit (y + 1.402*v);
-			g = limit (y - 0.3441*u - 0.7141*v);
-			b = limit (y + 1.772*u);
+			r = (unsigned int)(limit(y + 1.402*v));
+			g = (unsigned int)(limit(y - 0.3441*u - 0.7141*v));
+			b = (unsigned int)(limit(y + 1.772*u));
 			
 			// write back YUV values
 			tmp[0] = r;
@@ -562,7 +564,7 @@ void subtract_blocks (int const bs, double const mat1[bs][bs], double const mat2
 
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
-			res[i][j] = mat1[i][j] - mat2[i][j];
+			res[i][j] = limit (mat1[i][j] - mat2[i][j]);
 		}
 	}
 }
@@ -1005,7 +1007,7 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 	for (j=0; j<img->height; ++j) {
 		for (i=0; i<img->width; ++i) {
 			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
-				estbuf[j][i] = limit((int)(ebuf[j][i] / wbuf[j][i]));
+				estbuf[j][i] = (unsigned int)(limit(ebuf[j][i] / wbuf[j][i]));
 				// printf ("estbuf[%d][%d]: %d\n", j, i, estbuf[j][i]);
 				maxest = (estbuf[j][i] >= maxest) ? estbuf[j][i] : maxest;
 				minest = (estbuf[j][i] <= minest) ? estbuf[j][i] : minest;
@@ -1068,10 +1070,10 @@ int subtract_mean (unsigned int const bs, block_t* block, double res[bs][bs], un
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
 			if (dim == 1) {
-				res[i][j] = block->data[i][j] - mean[j];
+				res[i][j] = limit (block->data[i][j] - mean[j]);
 			}
 			else if (dim == 2) {
-				res[j][i] = block->data[j][i] - mean[j];
+				res[j][i] = limit (block->data[j][i] - mean[j]);
 			}
 			else {
 				generate_error ("Wrong dimension for mean calculation...");
@@ -1110,11 +1112,27 @@ double get_block_distance (char* const kind, block_t* ref_block, block_t* cmp_bl
 	}
 
 	else if (!strcmp(kind, "wnr")) {
-		// subtract the mean values from the regarding blocks
-		if ((subtract_mean(bs, ref_block, ref_mat, 1) != 0) ||
-			 (subtract_mean(bs, cmp_block, cmp_mat, 1) != 0)) {
-			return 1;
-		}
+		// // subtract the mean values from the regarding blocks
+		// if ((subtract_mean(bs, ref_block, ref_mat, 1) != 0) ||
+		// 	 (subtract_mean(bs, cmp_block, cmp_mat, 1) != 0)) {
+		// 	return 1;
+		// }
+
+		// subtract 128 for DCT transformation
+		shift_values (bs, ref_block, ref_mat);
+		shift_values (bs, cmp_block, cmp_mat);
+
+		// perform DCT on reference block by two matrix multiplications
+		dct_2d (bs, ref_mat);
+
+		// perform DCT on compare block by two matrix multiplications
+		dct_2d (bs, cmp_mat);
+
+		// perform thresholding on reference block
+		hard_threshold_2d (bs, ref_mat, th_2d, sigma);
+
+		// perform thresholding on compare block
+		hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
 	}
 
 	else {
@@ -1141,7 +1159,7 @@ int block_matching (char* const kind,
 						  unsigned int const h_search,
 						  unsigned int const v_search,
 						  double const th_2d,
-						  double const tau_match,
+						  double const tau_ht,
 						  unsigned int const channel,
 						  unsigned int block_marking,
 						  list_t* list) {
@@ -1153,6 +1171,15 @@ int block_matching (char* const kind,
 	int count = 0;
 	char path[20];								// path is set according to 'ht' or 'wnr'
 	char outfile[40];							// universally used output-filename
+	double tau_match = 0.0;
+
+	if (!strcmp(kind, "ht")) {
+		tau_match = tau_ht;
+	}
+	else if (!strcmp(kind, "wnr")) {
+		// tau_match = ((double)sigma/2000.0) + 0.0105;
+		tau_match = tau_ht;
+	}
 
 	// allocate block memory
 	if (new_block_struct(b_size, &ref_block) != 0) {
@@ -1162,6 +1189,7 @@ int block_matching (char* const kind,
 	if (new_block_struct(b_size, &cmp_block) != 0) {
 		return 1;
 	}
+
 
 	// compare blocks according to the sliding-window manner
 	for (j=0; j<img->height; j=j+b_step) {
@@ -1294,6 +1322,12 @@ int bm3d (char* const infile, 			// name of input file
 	// control number of channels
 	if (img.channels != 3) {
 		generate_error ("Wrong number of channels...");
+		return 1;
+	}
+
+	// control search window dimensions
+	if ((h_search > img.width) || (v_search > img.height)) {
+		generate_error ("Invalid dimensions for search window...");
 		return 1;
 	}
 
