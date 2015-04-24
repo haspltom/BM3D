@@ -8,12 +8,38 @@
 #include "../utils/utils.h"
 #include "noising.h"
 
+int exclude_extension (char* const str, char* name) {
+	int count = 0;
+	char tmp[30];
+	char* iter = strrchr (str, '/');
+
+	if (!iter) {
+		generate_error ("Invalid input filename...");
+		return 1;
+	}
+
+	++iter; 		// in order to exclude the '/' itself as well
+
+	while (iter && (*iter != '.')) {
+		tmp[count] = *iter;
+		++iter;
+		++count;
+	}
+
+	tmp[count] = '\0';
+	count = sprintf (name, "%s", tmp);
+
+	return (count == 0) ? 1 : 0;
+}
+
 int image_noise (char* const infile, int const std_dev) {
 	png_img img;
 	int i, j;
 	png_byte* row;
 	png_byte* tmp;
 	char outfile[40];
+	char pure_name[30];
+	char prefix[40];
 	
 	// read input image
 	if (png_read(&img, infile) != 0) {
@@ -60,8 +86,15 @@ int image_noise (char* const infile, int const std_dev) {
 		}
 	}
 
+	// obtain filename without path and extension
+	if (exclude_extension(infile, pure_name) != 0) {
+		return 1;
+	}
+
+	sprintf (prefix, "noisy_rgb_%s", pure_name);
+
 	// set output filename
-	if (get_output_filename (outfile, "img/rgb/", "noisy_rgb_house", "png", std_dev) != 0) {
+	if (get_output_filename (outfile, "img/rgb/", prefix, "png", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
