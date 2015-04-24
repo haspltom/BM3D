@@ -2,8 +2,8 @@
 #include "utils.h"
 
 // limits a given value to 255
-int limit (int const x) {
-	return (x < 0) ? 0 : (x > 255) ? 255 : x;
+double limit (double const x) {
+	return (x < 0.0) ? .00 : (x > 255.0) ? 255.0 : x;
 }
 
 // produces an output filename from given string literals
