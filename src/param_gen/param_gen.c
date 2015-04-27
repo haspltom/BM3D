@@ -5,7 +5,8 @@
 #include "../utils/utils.h"
 #include "param_gen.h"
 
-extern int generate_params_file (unsigned int const block_size, 
+extern int generate_params_file (char* const kind,
+											unsigned int const block_size, 
 											unsigned int const block_step, 
 											unsigned int const sigma,
 											unsigned int const max_blocks,
@@ -20,16 +21,16 @@ extern int generate_params_file (unsigned int const block_size,
 	char line[50];
 
 	if ((block_size < 10) && (block_step >= 10)) {
-		sprintf (prefix, "params_0%d-%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+		sprintf (prefix, "params_%s-0%d-%d-%d-%d-%d-%d", kind, block_size, block_step, sigma, max_blocks, h_search, v_search);
 	}
 	else if ((block_size >= 10) && (block_step < 10)) {
-		sprintf (prefix, "params_%d-0%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+		sprintf (prefix, "params_%s-%d-0%d-%d-%d-%d-%d", kind, block_size, block_step, sigma, max_blocks, h_search, v_search);
 	}
 	else if ((block_size < 10) && (block_step < 10)) {
-		sprintf (prefix, "params_0%d-0%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+		sprintf (prefix, "params_%s-0%d-0%d-%d-%d-%d-%d", kind, block_size, block_step, sigma, max_blocks, h_search, v_search);
 	}
 	else {
-		sprintf (prefix, "params_%d-%d-%d-%d-%d-%d", block_size, block_step, sigma, max_blocks, h_search, v_search);
+		sprintf (prefix, "params_%s-%d-%d-%d-%d-%d-%d", kind, block_size, block_step, sigma, max_blocks, h_search, v_search);
 	}
 
 	// set filename for parameter file
@@ -58,6 +59,9 @@ extern int generate_params_file (unsigned int const block_size,
 	fprintf (fd, "%s\n\n", line);
 
 	sprintf (line, "BEGIN_PARAMS");
+	fprintf (fd, "%s\n", line);
+
+	sprintf (line, "	SHRINKAGE_KIND %s", kind);
 	fprintf (fd, "%s\n", line);
 
 	sprintf (line, "	BLOCK_SIZE %d", block_size);
@@ -104,10 +108,11 @@ int main (int argc, char **argv) {
 	char* err_prefix = "[ERROR] ... ";
 
 	// check arguments
-	if (argc != 10) {
+	if (argc != 11) {
 		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
 		printf ("Usage:\n");
 		printf ("param_gen ");
+		printf ("<shrinkage kind> ");
 		printf ("<block size> ");
 		printf ("<block step> ");
 		printf ("<sigma> ");
@@ -120,7 +125,7 @@ int main (int argc, char **argv) {
 		return 1;
 	}
 
-	if (generate_params_file(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atof(argv[7]), atof(argv[8]), atof(argv[9])) != 0) {
+	if (generate_params_file(argv[1], atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]), atoi(argv[7]), atof(argv[8]), atof(argv[9]), atof(argv[10])) != 0) {
 		printf ("%s%s\n", err_prefix, ptr);
 		// free (ptr); //TODO
 		return 1;
