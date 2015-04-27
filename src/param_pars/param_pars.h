@@ -2,6 +2,7 @@
 #define PARAM_PARS_H
 
 typedef struct params {
+	char* kind;
 	unsigned int block_size;
 	unsigned int block_step;
 	unsigned int sigma;

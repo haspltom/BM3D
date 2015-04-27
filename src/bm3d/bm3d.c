@@ -795,7 +795,7 @@ void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], 
 	fprintf (fd, "\n\n\n");
 }
 
-int determine_estimates_ht (list_t const list, int const sigma, char* const path) {
+int shrinkage (char* const kind, list_t const list, int const sigma, char* const path) {
 	FILE* fd = 0;
 	char outfile[40];
 	group_node_t* tmp = list;
@@ -930,7 +930,7 @@ int i_buf2file (unsigned int const width, unsigned int const height, unsigned in
 	return 0;
 }
 
-int aggregate(png_img* img, list_t* list, unsigned int channel) {
+int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel) {
 	group_node_t* tmp = *list;
 	node_t* group;
 	block_t* block;
@@ -980,13 +980,13 @@ int aggregate(png_img* img, list_t* list, unsigned int channel) {
 
 	switch (channel) {
 		case 0:
-			sprintf (path, "dns/y/");
+			sprintf (path, "dns/%s/y/", kind);
 			break;
 		case 1:
-			sprintf (path, "dns/u/");
+			sprintf (path, "dns/%s/u/", kind);
 			break;
 		case 2:
-			sprintf (path, "dns/v/");
+			sprintf (path, "dns/%s/v/", kind);
 			break;
 		default:
 			break;
@@ -1231,14 +1231,14 @@ int block_matching (char* const kind,
 
 							// compare blocks for similarity
 							d = get_block_distance (kind, &ref_block, &cmp_block, sigma, th_2d);
-							if (!strcmp(kind, "wnr")) printf ("distance: %f\ntaumatch: %f\n", d, tau_match*255);
+							// if (!strcmp(kind, "wnr")) printf ("distance: %f\ntaumatch: %f\n", d, tau_match*255);
 							
 							// decide whether block similarity is sufficient
 							if (d < tau_match*255) {
 								if (append_block (&group, &cmp_block, d) != 0) {
 									return 1;
 								}
-								if (!strcmp(kind, "wnr")) printf ("block appended...\n");
+								// if (!strcmp(kind, "wnr")) printf ("block appended...\n");
 
 								if (block_marking) {
 									mark_cmp_block (tmp, &cmp_block);
@@ -1278,6 +1278,7 @@ int block_matching (char* const kind,
 }
 
 int bm3d (char* const infile, 			// name of input file
+			 char* const kind, 				// kind of shrinkage (ht, wnr, avg)
 			 int const block_size, 			// size of internal processed blocks
 			 int const block_step, 			// step size between blocks
 			 int const sigma, 				// standard deviation of noise
@@ -1336,6 +1337,7 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... .............................................\n");
 	printf ("[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
+	printf ("[INFO] ... kind of shrinkage: %s\n", kind);
 	printf ("[INFO] ... block size: %d\n", block_size);
 	printf ("[INFO] ... block step: %d\n", block_step);
 	printf ("[INFO] ... sigma: %d\n", sigma);
@@ -1410,7 +1412,7 @@ int bm3d (char* const infile, 			// name of input file
 	// printf ("[INFO] ... elapsed time: %f\n", time);
 	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list_ht));
 
-	if (print_list(y_list_ht, "grp/org/", "group") != 0) {
+	if (print_list(y_list_ht, "grp/org/ht/y/", "group") != 0) {
 		return 1;
 	}
 
@@ -1426,38 +1428,38 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	// obtain the pixel values from the u- and v-channel of the image
+	printf ("[INFO] ... extracting blocks from chrominance channels...\n");
+	if (get_chrom(&img, &y_list_ht, &u_list_ht, &v_list_ht)) {
+		return 1;
+	}
+
 	// trim groups to maximal number of blocks
-	printf ("[INFO] ... trimming blocks to maximum size...\n");
+	printf ("[INFO] ... trimming groups to maximum size...\n");
 	printf ("[INFO] ... luminance channel...\n");
 	if (trim_list(&y_list_ht, max_blocks) != 0) {
 		return 1;
 	}
 
-	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (trim_list(&u_list_ht, max_blocks) != 0) {
-	// 	return 1;
-	// }
-
-	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (trim_list(&v_list_ht, max_blocks) != 0) {
-	// 	return 1;
-	// }
-
-	// obtain the pixel values from the u- and v-channel of the image
-	// printf ("[INFO] ... extracting blocks from chrominance channels...\n");
-	// if (get_chrom(&img, &y_list_ht, &u_list_ht, &v_list_ht)) {
-	// 	return 1;
-	// }
-
-	if (print_list(y_list_ht, "grp/trm/y/", "group") != 0) {
+	printf ("[INFO] ... chrominance channel 1...\n");
+	if (trim_list(&u_list_ht, max_blocks) != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list_ht, "grp/trm/u/", "group") != 0) {
+	printf ("[INFO] ... chrominance channel 2...\n");
+	if (trim_list(&v_list_ht, max_blocks) != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list_ht, "grp/trm/v/", "group") != 0) {
+	if (print_list(y_list_ht, "grp/trm/ht/y/", "group") != 0) {
+		return 1;
+	}
+
+	if (print_list(u_list_ht, "grp/trm/ht/u/", "group") != 0) {
+		return 1;
+	}
+
+	if (print_list(v_list_ht, "grp/trm/ht/v/", "group") != 0) {
 		return 1;
 	}
 
@@ -1471,29 +1473,29 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... determining local estimates...\n");
 	printf ("[INFO] ... luminance channel...\n");
 
-	if (determine_estimates_ht(y_list_ht, sigma, "dns/y/grp/") != 0) {
+	if (shrinkage("ht", y_list_ht, sigma, "dns/ht/y/grp/") != 0) {
 		return 1;
 	}
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (determine_estimates_ht(u_list_ht, sigma, "dns/u/grp/") != 0) {
+	// if (shrinkage("ht", u_list_ht, sigma, "dns/ht/u/grp/") != 0) {
 	// 	return 1;
 	// }
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (determine_estimates_ht(v_list_ht, sigma, "dns/v/grp/") != 0) {
+	// if (shrinkage("ht", v_list_ht, sigma, "dns/ht/v/grp/") != 0) {
 	// 	return 1;
 	// }
 
-	if (print_list(y_list_ht, "grp/est/y/", "group") != 0) {
+	if (print_list(y_list_ht, "grp/est/ht/y/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list_ht, "grp/est/u/", "group") != 0) {
+	if (print_list(u_list_ht, "grp/est/ht/u/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list_ht, "grp/est/v/", "group") != 0) {
+	if (print_list(v_list_ht, "grp/est/ht/v/", "group") != 0) {
 		return 1;
 	}
 
@@ -1503,17 +1505,17 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... aggregating local estimates...\n");
 	printf ("[INFO] ... luminance channel...\n");
 
-	if (aggregate(&img, &y_list_ht, 0) != 0) {
+	if (aggregate("ht", &img, &y_list_ht, 0) != 0) {
 		return 1;
 	}
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (aggregate(&img, &u_list_ht, 1) != 0) {
+	// if (aggregate("ht", &img, &u_list_ht, 1) != 0) {
 	// 	return 1;
 	// }
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (aggregate(&img, &v_list_ht, 2) != 0) {
+	// if (aggregate("ht", &img, &v_list_ht, 2) != 0) {
 	// 	return 1;
 	// }
 
@@ -1534,16 +1536,20 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... elapsed time: %f\n", time);
 	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list_wnr));
 
-	// if (print_list(y_list_wnr, "grp/org/", "group") != 0) {
-	// 	return 1;
-	// }
+	if (print_list(y_list_wnr, "grp/org/wnr/y/", "group") != 0) {
+		return 1;
+	}
 
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming blocks to maximum size...\n");
 	printf ("[INFO] ... luminance channel...\n");
-	// if (trim_list(&y_list_wnr, max_blocks) != 0) {
-	// 	return 1;
-	// }
+	if (trim_list(&y_list_wnr, max_blocks) != 0) {
+		return 1;
+	}
+
+	if (print_list(y_list_wnr, "grp/trm/wnr/y/", "group") != 0) {
+		return 1;
+	}
 
 	printf ("[INFO] ... end of block-matching step 2...\n\n");
 

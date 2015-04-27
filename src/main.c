@@ -26,6 +26,7 @@ int main (int argc, char **argv) {
 	printf ("[INFO] ... launch BM3D...\n");
 
 	if (bm3d(argv[1],
+				params.kind,
 				params.block_size, 
 				params.block_step, 
 				params.sigma, 

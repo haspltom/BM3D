@@ -35,6 +35,34 @@ double get_val (char* const str) {
 	return val;
 }
 
+char* get_kind (char* const str) {
+	regex_t regex;
+	regmatch_t regmatch;
+	char* kind;
+	unsigned int len = 0;
+
+	// compile regular expression
+	if (regcomp(&regex, "ht|wnr|avg", REG_EXTENDED) != 0) {
+		generate_error ("Unable to compile regular expression");
+		return 0;
+	}
+
+	// find first occurance of 'regex' within 'tmp'
+	if (regexec(&regex, str, 1, &regmatch, 0) == REG_NOMATCH) {
+		generate_error ("Unable to determine kind");
+		return 0;
+	}
+
+	len = regmatch.rm_eo - regmatch.rm_so;		// determine length of substring
+	kind = malloc (len+1);							// allocate memory for substring
+	strncpy (kind, str+regmatch.rm_so, len);	// read substring from line
+	kind[len] = '\0';									// add terminating zero to substring
+	// free (kind);											// free allocated memory again
+	regfree (&regex);									// free compiled regular expression again
+
+	return kind;
+}
+
 int get_params (char* const filename, params_t* params) {
 	FILE* fd;
 	state st = IDLE;
@@ -58,7 +86,15 @@ int get_params (char* const filename, params_t* params) {
 
 		// write the extracted value to the regarding variable
 		if (st == ACTIVE) {
-			if (strstr(tmp, "BLOCK_SIZE") != NULL) {
+			if (strstr(tmp, "SHRINKAGE_KIND") != NULL) {
+				params->kind = get_kind(tmp);
+				
+				if (!params->kind) {
+					generate_error ("Unable to determine shrinkage kind");
+					return 1;
+				}
+			}
+			else if (strstr(tmp, "BLOCK_SIZE") != NULL) {
 				params->block_size = (int)get_val(tmp);
 			}
 			else if (strstr(tmp, "BLOCK_STEP") != NULL) {

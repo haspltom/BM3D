@@ -33,6 +33,7 @@ typedef group_node_t* list_t;
 
 // extern int png_denoise ();
 extern int bm3d (char* const infile, 			// name of input file
+			 		  char* const kind, 				// kind of shrinkage (ht, wnr, avg)
 			 		  int const block_size, 		// size of internal processed blocks
 			 		  int const block_step, 		// step size between blocks
 			 		  int const std_dev, 			// standard deviation of noise
