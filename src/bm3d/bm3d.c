@@ -9,70 +9,6 @@
 #include "../utils/utils.h"
 #include "bm3d.h"
 
-//------------ METHODS FOR COLORSPACE CONVERSION ------------
-// function that make the coversion from RGB to YUV
-void rgb2yuv (png_img* img) {
-	int i, j;
-	unsigned int y, u, v, r, g, b;
-	png_byte* row;
-	png_byte* tmp;
-
-	for (j=0; j<img->height; ++j) {
-		row = img->data[j];
-
-		for (i=0; i<img->width; ++i) {
-			tmp = &(row[i*3]);
-
-			// extract RGB values
-			r = tmp[0];
-			g = tmp[1];
-			b = tmp[2];
-
-			// convert pixel elements
-			y = (unsigned int)(limit(0 + 0.299*r + 0.587*g + 0.114*b));
-			u = (unsigned int)(limit(128 - 0.168736*r - 0.331264*g + 0.5*b));
-			v = (unsigned int)(limit(128 + 0.5*r - 0.418688*g - 0.081312*b));
-
-			// write back YUV values
-			tmp[0] = y;
-			tmp[1] = u;
-			tmp[2] = v;
-		}
-	}
-}
-
-// function that make the coversion from YUV to RGB
-void yuv2rgb (png_img* img) {
-	int i, j;
-	unsigned int y, u, v, r, g, b;
-	png_byte* row;
-	png_byte* tmp;
-
-	for (j=0; j<img->height; ++j) {
-		row = img->data[j];
-
-		for (i=0; i<img->width; ++i) {
-			tmp = &(row[i*3]);
-
-			// extract YUV values
-			y = tmp[0];
-			u = tmp[1] - 128;
-			v = tmp[2] - 128;
-			
-			// convert pixel elements
-			r = (unsigned int)(limit(y + 1.402*v));
-			g = (unsigned int)(limit(y - 0.3441*u - 0.7141*v));
-			b = (unsigned int)(limit(y + 1.772*u));
-			
-			// write back YUV values
-			tmp[0] = r;
-			tmp[1] = g;
-			tmp[2] = b;
-		}
-	}
-}
-
-
 //------------ METHODS FOR GENERAL PURPOSE ------------
 // delivers a block structure
 int new_block_struct (int const bs, block_t* block) {
@@ -415,126 +351,17 @@ void free_group (group_t* group) {
 	}
 }
 
-void dct_1d (int const len, double arr[len]) {
-	int i, j;
-	double sum = 0.0;
-	double tmp[len];
 
-	for (j=0; j<len; ++j) {
-		for (i=0; i<len; ++i) {
-			sum += arr[i] * (cos((PI/len)*(i+0.5)*j));
-		}
-		tmp[j] = sum;
-		sum = 0.0;
-	}
-}
 
-void dct_2d (int const len, double arr[len][len]) {
-	int i, j, k, l;
-	double sum, ai, aj;			// multiplicative constants
-	double tmp[len][len];		// dct-value buffer
-	double fac;						// result of the cosine multiplication
 
-	for (j=0; j<len; ++j) {
-		for (i=0; i<len; ++i) {
-			ai = (i == 0) ? 1.0 / sqrt((double)len) : sqrt(2.0/(double)len);
-			aj = (j == 0) ? 1.0 / sqrt((double)len) : sqrt(2.0/(double)len);
 
-			for (l=0; l<len; ++l) {
-				for (k=0; k<len; ++k) {
-					fac = cos((PI/(double)len) * ((double)l + 0.5) * (double)j) * cos((PI/(double)len) * ((double)k + 0.5) * (double)i);
-					sum += arr[l][k] * fac;
-				}
-			}
-			tmp[j][i] = ai * aj * sum;
-			sum = 0.0;
-		}
-	}
 
-	// write back to original matrix
-	for (j=0; j<len; ++j) {
-		for (i=0; i<len; ++i) {
-			arr[j][i] = tmp[j][i];
-		}
-	}
-}
 
-void dct_3d (int const len, int const z, double arr[z][len][len]) {
-	int i, j, k, l, m, n;
-	double sum, ai, aj, ak;
-	double tmp[z][len][len];		// dct result
-	double fac;
 
-	for (k=0; k<z; ++k) {
-		for (j=0; j<len; ++j) {
-			for (i=0; i<len; ++i) {
-				ai = (i == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
-				aj = (j == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
-				ak = (k == 0) ? 1.0/sqrt((double)z) : sqrt(2.0/(double)z);
 
-				for (n=0; n<z; ++n) {
-					for (m=0; m<len; ++m) {
-						for (l=0; l<len; ++l) {
-							fac = cos((PI/(double)z)*((double)n+0.5)*(double)k) * cos((PI/(double)len)*((double)m+0.5)*(double)j) * cos((PI/(double)len)*((double)l+0.5)*(double)i);
-							sum += arr[n][m][l] * fac;
-						}
-					}
-				}
-				tmp[k][j][i] = ai * aj * ak * sum;
-				sum = 0.0;
-			}
-		}
-	}
 
-	// write back to original matrix
-	for (k=0; k<z; ++k) {
-		for (j=0; j<len; ++j) {
-			for (i=0; i<len; ++i) {
-				arr[k][j][i] = tmp[k][j][i];
-			}
-		}
-	}
-}
 
-void idct_3d (int const len, int const z, double arr[z][len][len]) {
-	int i, j, k, l, m, n;
-	double sum, al, am, an = 0.0;
-	double tmp[z][len][len];		// dct result
-	double fac;
 
-	for (k=0; k<z; ++k) {
-		for (j=0; j<len; ++j) {
-			for (i=0; i<len; ++i) {
-				for (n=0; n<z; ++n) {
-					for (m=0; m<len; ++m) {
-						for (l=0; l<len; ++l) {
-							al = (l == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
-							am = (m == 0) ? 1.0/sqrt((double)len) : sqrt(2.0/(double)len);
-							an = (n == 0) ? 1.0/sqrt((double)z) : sqrt(2.0/(double)z);
-
-							fac = cos((PI/(double)len)*((double)j+0.5)*(double)m) * cos((PI/(double)len)*((double)i+0.5)*(double)l) * cos((PI/(double)z)*((double)k+0.5)*(double)n);
-							sum += arr[n][m][l] * al * am * an * fac;
-						}
-					}
-				}
-				tmp[k][j][i] = sum;
-				// if (k==0 && j==0 && i==0) printf ("sum: %f\n", sum);
-				// if (k==0 && j==0 && i==0) printf ("ai: %f\naj: %f\nak: %f\n", ai, aj, ak);
-				// if (k==0 && j==0 && i==0) printf ("product: %f\n", tmp[k][j][i]);
-				sum = 0.0;
-			}
-		}
-	}
-
-	// write back to original matrix
-	for (k=0; k<z; ++k) {
-		for (j=0; j<len; ++j) {
-			for (i=0; i<len; ++i) {
-				arr[k][j][i] = tmp[k][j][i];
-			}
-		}
-	}
-}
 
 void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, int const sigma) {
 	int i, j;
@@ -564,7 +391,8 @@ void subtract_blocks (int const bs, double const mat1[bs][bs], double const mat2
 
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
-			res[i][j] = limit (mat1[i][j] - mat2[i][j]);
+			// res[i][j] = limit (mat1[i][j] - mat2[i][j]);
+			res[i][j] = mat1[i][j] - mat2[i][j];
 		}
 	}
 }
@@ -795,10 +623,10 @@ void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], 
 	fprintf (fd, "\n\n\n");
 }
 
-int shrinkage (char* const kind, list_t const list, int const sigma, char* const path) {
+int shrinkage (char* const kind, list_t* list, int const sigma, char* const path) {
 	FILE* fd = 0;
 	char outfile[40];
-	group_node_t* tmp = list;
+	group_node_t* tmp = *list;
 	node_t* group;
 	unsigned int z;
 	double th_3d = 0.15;
@@ -836,10 +664,25 @@ int shrinkage (char* const kind, list_t const list, int const sigma, char* const
 		array2file (fd, len, z, arr, "group after 3D-DCT transformation");
 
 		// perform 3D-hard-thresholding
-		hard_threshold_3d (len, z, arr, th_3d, sigma);
+		if (!strcmp(kind, "avg")) {
+			// average_3d (len, z, arr, th_3d, sigma);
+		}
+		else if (!strcmp(kind, "ht")) {
+			hard_threshold_3d (len, z, arr, th_3d, sigma);
+		}
+		else if (!strcmp(kind, "wnr")) {
+			// wiener_filtering_3d (len, z, arr, th_3d, sigma);
+		}
+		else if (!strcmp(kind, "none")) {
+			// do nothing
+		}
+		else {
+			generate_error ("Invalid kind of shrinkage...");
+			return 1;
+		}
 
-		// append thresholded group to log-file
-		array2file (fd, len, z, arr, "group after 3D-hard-thresholding");
+		//append thresholded group to log-file
+		array2file (fd, len, z, arr, "group after 3D-shrinkage-operation");
 
 		// calculate the weight for the actual block
 		tmp->weight = get_weight (len, z, arr);	
@@ -992,13 +835,15 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			break;
 	}
 
-	if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
-		return 1;
-	}	
-	
-	if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
-		return 1;
-	}	
+	if (strcmp(kind, "none")) {
+		if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
+			return 1;
+		}	
+		
+		if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
+			return 1;
+		}	
+	}
 
 	int maxest = 0;
 	int minest = 255;
@@ -1019,9 +864,11 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	printf ("min est: %d\n", minest);
 
 	// write buffer with local estimates to file
-	if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
-		return 1;
-	}	
+	if (strcmp(kind, "none")) {
+		if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
+			return 1;
+		}	
+	}
 
 	// write local estimates back to image
 	for (j=0; j<img->height; ++j) {
@@ -1086,59 +933,28 @@ int subtract_mean (unsigned int const bs, block_t* block, double res[bs][bs], un
 }
 
 // performs a check, whether two given blocks are similar
-double get_block_distance (char* const kind, block_t* ref_block, block_t* cmp_block, int const sigma, double const th_2d) {
+double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sigma, double const th_2d) {
 	int const bs = ref_block->block_size;
 	double ref_mat[bs][bs];
 	double cmp_mat[bs][bs];
 	double sub_mat[bs][bs];
 	double distance = 0.0;
 
-	if (!strcmp(kind, "ht")) {
-		// subtract 128 for DCT transformation
-		shift_values (bs, ref_block, ref_mat);
-		shift_values (bs, cmp_block, cmp_mat);
+	// subtract 128 for DCT transformation
+	shift_values (bs, ref_block, ref_mat);
+	shift_values (bs, cmp_block, cmp_mat);
 
-		// perform DCT on reference block by two matrix multiplications
-		dct_2d (bs, ref_mat);
+	// perform DCT on reference block by two matrix multiplications
+	dct_2d (bs, ref_mat);
 
-		// perform DCT on compare block by two matrix multiplications
-		dct_2d (bs, cmp_mat);
+	// perform DCT on compare block by two matrix multiplications
+	dct_2d (bs, cmp_mat);
 
-		// perform thresholding on reference block
-		hard_threshold_2d (bs, ref_mat, th_2d, sigma);
+	// perform thresholding on reference block
+	hard_threshold_2d (bs, ref_mat, th_2d, sigma);
 
-		// perform thresholding on compare block
-		hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
-	}
-
-	else if (!strcmp(kind, "wnr")) {
-		// // subtract the mean values from the regarding blocks
-		// if ((subtract_mean(bs, ref_block, ref_mat, 1) != 0) ||
-		// 	 (subtract_mean(bs, cmp_block, cmp_mat, 1) != 0)) {
-		// 	return 1;
-		// }
-
-		// subtract 128 for DCT transformation
-		shift_values (bs, ref_block, ref_mat);
-		shift_values (bs, cmp_block, cmp_mat);
-
-		// perform DCT on reference block by two matrix multiplications
-		dct_2d (bs, ref_mat);
-
-		// perform DCT on compare block by two matrix multiplications
-		dct_2d (bs, cmp_mat);
-
-		// perform thresholding on reference block
-		hard_threshold_2d (bs, ref_mat, th_2d, sigma);
-
-		// perform thresholding on compare block
-		hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
-	}
-
-	else {
-		generate_error ("Wrong description of block-matching kind...");
-		return -1.0;
-	}
+	// perform thresholding on compare block
+	hard_threshold_2d (bs, cmp_mat, th_2d, sigma);
 
 	// subtract compare block from reference block
 	subtract_blocks (bs, ref_mat, cmp_mat, sub_mat);
@@ -1159,7 +975,7 @@ int block_matching (char* const kind,
 						  unsigned int const h_search,
 						  unsigned int const v_search,
 						  double const th_2d,
-						  double const tau_ht,
+						  double const tau_match,
 						  unsigned int const channel,
 						  unsigned int block_marking,
 						  list_t* list) {
@@ -1171,15 +987,6 @@ int block_matching (char* const kind,
 	int count = 0;
 	char path[20];								// path is set according to 'ht' or 'wnr'
 	char outfile[40];							// universally used output-filename
-	double tau_match = 0.0;
-
-	if (!strcmp(kind, "ht")) {
-		tau_match = tau_ht;
-	}
-	else if (!strcmp(kind, "wnr")) {
-		// tau_match = ((double)sigma/2000.0) + 0.0105;
-		tau_match = tau_ht;
-	}
 
 	// allocate block memory
 	if (new_block_struct(b_size, &ref_block) != 0) {
@@ -1189,6 +996,11 @@ int block_matching (char* const kind,
 	if (new_block_struct(b_size, &cmp_block) != 0) {
 		return 1;
 	}
+
+				double dmin = 100.0;
+				double dmax = 0.0;
+				double dsum = 0.0;
+				int dnum = 0;
 
 
 	// compare blocks according to the sliding-window manner
@@ -1230,8 +1042,12 @@ int block_matching (char* const kind,
 							// printf ("(%d/%d)\n", k, l);
 
 							// compare blocks for similarity
-							d = get_block_distance (kind, &ref_block, &cmp_block, sigma, th_2d);
-							// if (!strcmp(kind, "wnr")) printf ("distance: %f\ntaumatch: %f\n", d, tau_match*255);
+							d = get_block_distance (&ref_block, &cmp_block, sigma, th_2d);
+							dmin = (d < dmin) ? d : dmin;
+							dmax = (d > dmax) ? d : dmax;
+							dsum += d;
+							++dnum;
+							// if (!strcmp(kind, "ht")) printf ("distance: %f\ntaumatch: %f\n", d, tau_match*255);
 							
 							// decide whether block similarity is sufficient
 							if (d < tau_match*255) {
@@ -1248,6 +1064,7 @@ int block_matching (char* const kind,
 					}
 				}
 
+
 				// add group of similar blocks to list
 				if (append_group (list, &group) != 0) {
 					return 1;
@@ -1255,7 +1072,8 @@ int block_matching (char* const kind,
 
 				if (block_marking) {
 					// write image with marked group in it
-					sprintf (path, "img/yuv/grp/%s/", kind);
+					// sprintf (path, "img/yuv/grp/%s/", kind);
+					sprintf (path, "img/yuv/grp/");
 
 					// set filename for noisy yuv output image
 					if (get_output_filename (outfile, path, "group", "png", ++count) != 0) {
@@ -1273,6 +1091,7 @@ int block_matching (char* const kind,
 			}
 		}
 	}
+				printf ("dmin: %f\ndmax: %f\ndavg: %f\n", dmin, dmax, dsum/((double)dnum));
 
 	return 0;
 }
@@ -1292,12 +1111,10 @@ int bm3d (char* const infile, 			// name of input file
 	png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
-	list_t y_list_ht = 0;					// list of groups	of the y-channel for the HT part
-	list_t u_list_ht = 0;					// list of groups of the u-channel for the HT part
-	list_t v_list_ht = 0;					// list of groups of the v-channel for the HT part
-	list_t y_list_wnr = 0;					// list of groups	of the y-channel for the WNR part
-	list_t u_list_wnr = 0;					// list of groups of the u-channel for the WNR part
-	list_t v_list_wnr = 0;					// list of groups of the v-channel for the WNR part
+	char prefix[20];
+	list_t y_list = 0;					// list of groups	of the y-channel
+	list_t u_list = 0;					// list of groups of the u-channel
+	list_t v_list = 0;					// list of groups of the v-channel
 	clock_t bm_start, bm_end;				// time variables for block matching start and end
 	double time;
 
@@ -1371,48 +1188,49 @@ int bm3d (char* const infile, 			// name of input file
 
 
 	// ----------------------------------------------------------------------
-	// BLOCK-MATCHING STEP 1: HARD-THRESHOLDING
+	// BLOCK-MATCHING
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... launch of block-matching step 1...\n");
-	printf ("[INFO] ... luminance channel...\n");
+	printf ("[INFO] ... launch of block-matching...\n");
+	printf ("[INFO] ...    luminance channel...\n");
 	bm_start = clock();
 
-	if (block_matching("ht", &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list_ht) != 0) {
+	if (block_matching(kind, &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list) != 0) {
 		return 1;
 	}
 
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	printf ("[INFO] ... elapsed time: %f\n", time);
-	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list_ht));
+	printf ("[INFO] ...    elapsed time: %f\n", time);
+	printf ("[INFO] ...    number of groups in list: %d\n\n", list_length(&y_list));
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
 
 	// bm_start = clock();
 
-	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 1, 0, &u_list_ht) != 0) {
+	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 1, 0, &u_list) != 0) {
 	// 	return 1;
 	// }
 
 	// bm_end = clock();
 	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 	// printf ("[INFO] ... elapsed time: %f\n", time);
-	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list_ht));
+	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
 
 	// bm_start = clock();
 
-	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 2, 0, &v_list_ht) != 0) {
+	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 2, 0, &v_list) != 0) {
 	// 	return 1;
 	// }
 
 	// bm_end = clock();
 	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 	// printf ("[INFO] ... elapsed time: %f\n", time);
-	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list_ht));
+	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
+	printf ("[INFO] ... end of block-matching...\n\n");
 
-	if (print_list(y_list_ht, "grp/org/ht/y/", "group") != 0) {
+	if (print_list(y_list, "grp/org/ht/y/", "group") != 0) {
 		return 1;
 	}
 
@@ -1423,144 +1241,100 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// add number of groups and computation time to txt-file for statistical evaluation
-	if (add_csv_line(outfile, block_step, list_length(&y_list_ht), time) != 0) {
+	if (add_csv_line(outfile, block_step, list_length(&y_list), time) != 0) {
 		generate_error ("Unable to add values to csv-file...");
 		return 1;
 	}
 
 	// obtain the pixel values from the u- and v-channel of the image
-	printf ("[INFO] ... extracting blocks from chrominance channels...\n");
-	if (get_chrom(&img, &y_list_ht, &u_list_ht, &v_list_ht)) {
+	printf ("[INFO] ... extracting blocks from chrominance channels...\n\n");
+	if (get_chrom(&img, &y_list, &u_list, &v_list)) {
 		return 1;
 	}
 
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming groups to maximum size...\n");
-	printf ("[INFO] ... luminance channel...\n");
-	if (trim_list(&y_list_ht, max_blocks) != 0) {
+	printf ("[INFO] ...    luminance channel...\n");
+	if (trim_list(&y_list, max_blocks) != 0) {
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 1...\n");
-	if (trim_list(&u_list_ht, max_blocks) != 0) {
+	printf ("[INFO] ...    chrominance channel 1...\n");
+	if (trim_list(&u_list, max_blocks) != 0) {
 		return 1;
 	}
 
-	printf ("[INFO] ... chrominance channel 2...\n");
-	if (trim_list(&v_list_ht, max_blocks) != 0) {
+	printf ("[INFO] ...    chrominance channel 2...\n\n");
+	if (trim_list(&v_list, max_blocks) != 0) {
 		return 1;
 	}
 
-	if (print_list(y_list_ht, "grp/trm/ht/y/", "group") != 0) {
+	if (print_list(y_list, "grp/trm/ht/y/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list_ht, "grp/trm/ht/u/", "group") != 0) {
+	if (print_list(u_list, "grp/trm/ht/u/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list_ht, "grp/trm/ht/v/", "group") != 0) {
+	if (print_list(v_list, "grp/trm/ht/v/", "group") != 0) {
 		return 1;
 	}
 
-	printf ("[INFO] ... end of block-matching step 1...\n\n");
 
 	
 	// ----------------------------------------------------------------------
-	// IMAGE-DENOISING STEP 1: HARD-THRESHOLDING
+	// IMAGE-DENOISING
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... launch of denoising for hard-thresholding...\n");
-	printf ("[INFO] ... determining local estimates...\n");
-	printf ("[INFO] ... luminance channel...\n");
+	printf ("[INFO] ... launch of denoising...\n");
+	printf ("[INFO] ...    determining estimates...\n");
+	printf ("[INFO] ...       luminance channel...\n");
 
-	if (shrinkage("ht", y_list_ht, sigma, "dns/ht/y/grp/") != 0) {
+	if (shrinkage(kind, &y_list, sigma, "dns/ht/y/grp/") != 0) {
 		return 1;
 	}
 
-	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (shrinkage("ht", u_list_ht, sigma, "dns/ht/u/grp/") != 0) {
+	// printf ("[INFO] ...          -> chrominance channel 1...\n");
+	// if (shrinkage("ht", u_list, sigma, "dns/ht/u/grp/") != 0) {
 	// 	return 1;
 	// }
 
-	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (shrinkage("ht", v_list_ht, sigma, "dns/ht/v/grp/") != 0) {
+	// printf ("[INFO] ...          -> chrominance channel 2...\n");
+	// if (shrinkage("ht", v_list, sigma, "dns/ht/v/grp/") != 0) {
 	// 	return 1;
 	// }
 
-	if (print_list(y_list_ht, "grp/est/ht/y/", "group") != 0) {
+	if (print_list(y_list, "grp/est/ht/y/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list_ht, "grp/est/ht/u/", "group") != 0) {
+	if (print_list(u_list, "grp/est/ht/u/", "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list_ht, "grp/est/ht/v/", "group") != 0) {
+	if (print_list(v_list, "grp/est/ht/v/", "group") != 0) {
 		return 1;
 	}
 
 	// ----------------------------------------------------------------------
-	// AGGREGATION STEP 1: HARD-THRESHOLDING
+	// AGGREGATION
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... aggregating local estimates...\n");
-	printf ("[INFO] ... luminance channel...\n");
+	printf ("[INFO] ...    aggregating local estimates...\n");
+	printf ("[INFO] ...       luminance channel...\n");
 
-	if (aggregate("ht", &img, &y_list_ht, 0) != 0) {
+	if (aggregate(kind, &img, &y_list, 0) != 0) {
 		return 1;
 	}
 
-	// printf ("[INFO] ... chrominance channel 1...\n");
-	// if (aggregate("ht", &img, &u_list_ht, 1) != 0) {
+	// printf ("[INFO] ...    -> chrominance channel 1...\n");
+	// if (aggregate("ht", &img, &u_list, 1) != 0) {
 	// 	return 1;
 	// }
 
-	// printf ("[INFO] ... chrominance channel 2...\n");
-	// if (aggregate("ht", &img, &v_list_ht, 2) != 0) {
+	// printf ("[INFO] ...    -> chrominance channel 2...\n");
+	// if (aggregate("ht", &img, &v_list, 2) != 0) {
 	// 	return 1;
 	// }
-
-	// ----------------------------------------------------------------------
-	// BLOCK-MATCHING STEP 2: WIENER-FILTERING
-	// ----------------------------------------------------------------------
-	printf ("[INFO] ... launch of block-matching step 2...\n");
-	printf ("[INFO] ... luminance channel...\n");
-
-	bm_start = clock();
-
-	if (block_matching("wnr", &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list_wnr) != 0) {
-		return 1;
-	}
-
-	bm_end = clock();
-	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	printf ("[INFO] ... elapsed time: %f\n", time);
-	printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&y_list_wnr));
-
-	if (print_list(y_list_wnr, "grp/org/wnr/y/", "group") != 0) {
-		return 1;
-	}
-
-	// trim groups to maximal number of blocks
-	printf ("[INFO] ... trimming blocks to maximum size...\n");
-	printf ("[INFO] ... luminance channel...\n");
-	if (trim_list(&y_list_wnr, max_blocks) != 0) {
-		return 1;
-	}
-
-	if (print_list(y_list_wnr, "grp/trm/wnr/y/", "group") != 0) {
-		return 1;
-	}
-
-	printf ("[INFO] ... end of block-matching step 2...\n\n");
-
-
-	// ----------------------------------------------------------------------
-	// IMAGE-DENOISING STEP 2: WIENER-FILTERING
-	// ----------------------------------------------------------------------
-
-	// ----------------------------------------------------------------------
-	// AGGREGATION STEP 2: WIENER-FILTERING
-	// ----------------------------------------------------------------------
 
 	printf ("[INFO] ... end of denoising...\n\n");
 	
@@ -1570,8 +1344,11 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... launch of color conversion...\n");
 	yuv2rgb (&img);
 
+
+	sprintf (prefix, "denoised_rgb_%s", kind);
+
 	// set filename for denoised rgb output image
-	if (get_output_filename (outfile, "img/rgb/", "denoised_rgb", "png", sigma) != 0) {
+	if (get_output_filename (outfile, "img/rgb/", prefix, "png", sigma) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}

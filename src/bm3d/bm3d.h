@@ -1,8 +1,6 @@
 #ifndef BM3D_H
 #define BM3D_H
 
-#define PI 3.14159265359
-
 // structure of one block
 typedef struct block {
 	int block_size;									// block size
