@@ -1,7 +1,7 @@
 CC      = clang
 BIN     = noising param_gen bm3d
 DEFDIRS = objdir resdir bmsdir 
-IMGDIRS = rgbdir yuvgrphtdir yuvgrpwndir
+IMGDIRS = rgbdir yuvgrpdir
 ORGDIRS = orghtydir orghtudir orghtvdir orgwnydir orgwnudir orgwnvdir 
 TRMDIRS = trmhtydir trmhtudir trmhtvdir trmwnydir trmwnudir trmwnvdir
 ESTDIRS = esthtydir esthtudir esthtvdir estwnydir estwnudir estwnvdir
@@ -29,11 +29,8 @@ objdir:
 rgbdir:
 	$(MKDIR) -p $(IMGDIR)/rgb
 
-yuvgrphtdir:
-	$(MKDIR) -p $(IMGDIR)/yuv/grp/ht
-
-yuvgrpwndir:
-	$(MKDIR) -p $(IMGDIR)/yuv/grp/wnr
+yuvgrpdir:
+	$(MKDIR) -p $(IMGDIR)/yuv/grp
 
 orghtydir:
 	$(MKDIR) -p $(GRPDIR)/org/ht/y
