@@ -42,7 +42,7 @@ char* get_kind (char* const str) {
 	unsigned int len = 0;
 
 	// compile regular expression
-	if (regcomp(&regex, "ht|wnr|avg", REG_EXTENDED) != 0) {
+	if (regcomp(&regex, "avg|ht|wnr|none", REG_EXTENDED) != 0) {
 		generate_error ("Unable to compile regular expression");
 		return 0;
 	}
