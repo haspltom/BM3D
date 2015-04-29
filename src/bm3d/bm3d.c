@@ -9,8 +9,9 @@
 #include "../utils/utils.h"
 #include "bm3d.h"
 
-//------------ METHODS FOR GENERAL PURPOSE ------------
-// delivers a block structure
+// --------------------------------------------------------------------------
+// METHODS FOR GENERAL PURPOSES
+// --------------------------------------------------------------------------
 int new_block_struct (int const bs, block_t* block) {
 	int i;
 
@@ -36,22 +37,43 @@ int new_block_struct (int const bs, block_t* block) {
 	return 0;
 }
 
-void print_single_block (block_t* block, char* const filename) {
-	FILE* fd;
-	int i, j;
+unsigned int list_length (list_t* list){
+	unsigned int len = 0;
+	group_node_t* tmp = *list;
 
-	fd = fopen (filename, "w");
-
-	for (j=0; j<block->block_size; ++j) {
-		for (i=0; i<block->block_size; ++i) {
-			fprintf (fd, "%f ", block->data[i][j]);
-		}
-		fprintf (fd, "\n");
+	while (tmp != NULL) {
+		++len;
+		tmp = tmp->next;
 	}
 
-	fclose (fd);
+	return len;
 }
 
+unsigned int group_length (group_t* group){
+	unsigned int len = 0;
+	node_t* tmp = *group;
+
+	while (tmp != NULL) {
+		++len;
+		tmp = tmp->next;
+	}
+
+	return len;
+}
+
+void free_group (group_t* group) {
+	node_t* tmp = *group;
+
+	while (*group != NULL) {
+		tmp = *group;
+		*group = tmp->next;
+		free (tmp);
+	}
+}
+
+// --------------------------------------------------------------------------
+// METHODS FOR FILE-WRITING
+// --------------------------------------------------------------------------
 void print_block (FILE* fd, block_t const block) {
 	int i, j;
 
@@ -63,8 +85,145 @@ void print_block (FILE* fd, block_t const block) {
 	}
 }
 
+int print_list (list_t const list, char* const path, char* const prefix) {
+	FILE* fd = 0;
+	group_node_t* tmp = list;
+	node_t* tmp_block;
+	char groupname[40];
+	int count = 0;
 
-//------------ METHODS FOR BLOCK MATCHING ------------
+	printf ("[INFO] ... printing groups to file...\n");
+
+	while (tmp != NULL) {
+		//obtain output filename
+		if (get_output_filename (groupname, path, prefix, "txt", ++count) != 0) {
+			generate_error ("Unable to process output filename for group...");
+			return 1;
+		}
+
+		fd = fopen (groupname, "w");
+		
+		if (fd == NULL) {
+			generate_error ("Unable to open file for printing group...");
+			return 1;
+		}
+
+		tmp_block = tmp->group;
+		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
+
+		if (!strcmp(path, "grp/est/y/") || !strcmp(path, "grp/est/u/") || !strcmp(path, "grp/est/v/")) {
+			fprintf (fd, "[INFO] ... weight of group: %f\n", tmp->weight);
+		}
+
+		fprintf (fd, "\n");
+		fprintf (fd, "[INFO] ... reference block...\n");
+
+		while (tmp_block != NULL) {
+			print_block (fd, tmp_block->block);
+			fprintf (fd, "[INFO] ... block position: (%d/%d)\n", tmp_block->block.x, tmp_block->block.y);
+			fprintf (fd, "[INFO] ... distance to reference block: %f\n\n", tmp_block->distance);
+			tmp_block = tmp_block->next;
+		}
+
+		tmp = tmp->next;
+
+		fclose (fd);
+	}
+
+	return 0;
+}
+
+void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], char* const header) {
+	int i, j, k;
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", header);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (k=0; k<z; ++k) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				fprintf (fd, "%f ", arr[k][j][i]);
+			}
+			fprintf (fd, "\n");
+		}
+		fprintf (fd, "\n\n");
+	}
+	fprintf (fd, "\n\n\n");
+}
+
+int d_buf2file (unsigned int const width, unsigned int const height, double buf[width][height], char* const path, char* const prefix) {
+	FILE* fd = 0;
+	char outfile[40];
+	int i, j;
+
+	//obtain output filename
+	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
+		generate_error ("Unable to process output filename for buffer...");
+		return 1;
+	}
+
+	fd = fopen (outfile, "w");
+	
+	if (fd == NULL) {
+		generate_error ("Unable to open file for printing buffer...");
+		return 1;
+	}
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", prefix);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (j=0; j<height; ++j) {
+		for (i=0; i<width; ++i) {
+			fprintf (fd, "%f ", buf[j][i]);
+		}
+		fprintf (fd, "\n");
+	}
+
+	fclose (fd);
+
+	return 0;
+}
+
+int i_buf2file (unsigned int const width, unsigned int const height, unsigned int const buf[width][height], char* const path, char* const prefix) {
+	FILE* fd = 0;
+	char outfile[40];
+	int i, j;
+
+	//obtain output filename
+	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
+		generate_error ("Unable to process output filename for buffer...");
+		return 1;
+	}
+
+	fd = fopen (outfile, "w");
+	
+	if (fd == NULL) {
+		generate_error ("Unable to open file for printing buffer...");
+		return 1;
+	}
+
+	fprintf (fd, "[INFO] ... .............................................\n");
+	fprintf (fd, "[INFO] ... %s\n", prefix);
+	fprintf (fd, "[INFO] ... .............................................\n\n");
+
+	for (j=0; j<height; ++j) {
+		for (i=0; i<width; ++i) {
+			fprintf (fd, "%d ", buf[j][i]);
+		}
+		fprintf (fd, "\n");
+	}
+
+	fclose (fd);
+
+	return 0;
+}
+
+
+// --------------------------------------------------------------------------
+// METHODS FOR BLOCK-MATCHING
+// --------------------------------------------------------------------------
 int exceeds_image_dimensions (int const width, int const height, int const bs, int const x, int const y) {
 	if (((x+(bs/2) < width) && (x-(bs/2) >= 0)) && ((y+(bs/2) < height) && (y-(bs/2) >= 0))) { 
 		return 0;
@@ -269,99 +428,15 @@ void mark_cmp_block (png_img* img, block_t* block) {
 	}
 }
 
-unsigned int list_length (list_t* list){
-	unsigned int len = 0;
-	group_node_t* tmp = *list;
+void shift_values (int const bs, block_t* block, double mat[bs][bs]) {
+	int i, j;
 
-	while (tmp != NULL) {
-		++len;
-		tmp = tmp->next;
-	}
-
-	return len;
-}
-
-unsigned int group_length (group_t* group){
-	unsigned int len = 0;
-	node_t* tmp = *group;
-
-	while (tmp != NULL) {
-		++len;
-		tmp = tmp->next;
-	}
-
-	return len;
-}
-
-int print_list (list_t const list, char* const path, char* const prefix) {
-	FILE* fd = 0;
-	group_node_t* tmp = list;
-	node_t* tmp_block;
-	char groupname[40];
-	int count = 0;
-
-	printf ("[INFO] ... printing groups to file...\n");
-
-	while (tmp != NULL) {
-		//obtain output filename
-		if (get_output_filename (groupname, path, prefix, "txt", ++count) != 0) {
-			generate_error ("Unable to process output filename for group...");
-			return 1;
+	for (j=0; j<bs; ++j) {
+		for (i=0; i<bs; ++i) {
+			mat[i][j] = block->data[i][j] - 128.0;
 		}
-
-		fd = fopen (groupname, "w");
-		
-		if (fd == NULL) {
-			generate_error ("Unable to open file for printing group...");
-			return 1;
-		}
-
-		tmp_block = tmp->group;
-		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
-
-		if (!strcmp(path, "grp/est/y/") || !strcmp(path, "grp/est/u/") || !strcmp(path, "grp/est/v/")) {
-			fprintf (fd, "[INFO] ... weight of group: %f\n", tmp->weight);
-		}
-
-		fprintf (fd, "\n");
-		fprintf (fd, "[INFO] ... reference block...\n");
-
-		while (tmp_block != NULL) {
-			print_block (fd, tmp_block->block);
-			fprintf (fd, "[INFO] ... block position: (%d/%d)\n", tmp_block->block.x, tmp_block->block.y);
-			fprintf (fd, "[INFO] ... distance to reference block: %f\n\n", tmp_block->distance);
-			tmp_block = tmp_block->next;
-		}
-
-		tmp = tmp->next;
-
-		fclose (fd);
-	}
-
-	return 0;
-}
-
-void free_group (group_t* group) {
-	node_t* tmp = *group;
-
-	while (*group != NULL) {
-		tmp = *group;
-		*group = tmp->next;
-		free (tmp);
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, int const sigma) {
 	int i, j;
@@ -372,16 +447,6 @@ void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, in
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
 			mat[j][i] = (abs(mat[j][i])>threshold) ? mat[j][i] : 0.0;
-		}
-	}
-}
-
-void shift_values (int const bs, block_t* block, double mat[bs][bs]) {
-	int i, j;
-
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			mat[i][j] = block->data[i][j] - 128.0;
 		}
 	}
 }
@@ -408,528 +473,6 @@ double l2_norm (int const bs, double const mat[bs][bs]) {
 	}
 
 	return sqrt (sum);
-}
-
-int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
-	group_node_t* tmp = *ylist;
-	node_t* group;
-	block_t* block;
-	double w;							// weight of actual processed group
-	int x, y, bs;
-	double d;
-	group_t u_group = 0;				// group, which holds a set of similar blocks
-	group_t v_group = 0;				// group, which holds a set of similar blocks
-	block_t tmp_block;
-
-	// allocate block memory
-	if (new_block_struct(tmp->group->block.block_size, &tmp_block) != 0) {
-		return 1;
-	}
-
-	// go through all groups
-	while (tmp->next != NULL) {
-		group = tmp->group;
-		w = tmp->weight;
-
-		// iterate over all blocks within the actual group
-		while (group != NULL) {
-			block = &group->block;
-			x = block->x;
-			y = block->y;
-			bs = block->block_size;
-			d = group->distance;
-
-			// obtain block data for the u-channel
-			if (get_block (img, 1, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
-				return 1;
-			}
-				
-			// append block data to the regarding group
-			if (append_block (&u_group, &tmp_block, d) != 0) {
-				return 1;
-			}
-
-			// obtain block data for the v-channel
-			if (get_block (img, 2, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
-				return 1;
-			}
-				
-			// append block data to the regarding group
-			if (append_block (&v_group, &tmp_block, d) != 0) {
-				return 1;
-			}
-
-			group = group->next;
-		}
-
-		// add extracted groups to regarding lists
-		if (append_group (ulist, &u_group) != 0) {
-			return 1;
-		}
-
-		if (append_group (vlist, &v_group) != 0) {
-			return 1;
-		}
-
-		u_group = 0; //EVIL, cause same pointer
-		v_group = 0; //EVIL, cause same pointer
-		tmp = tmp->next;
-	}
-	// TODO delete dynamic memory
-
-	return 0;
-}
-
-//------------ METHODS FOR DENOISING ------------
-node_t* get_previous_block (group_t group, node_t* block) {
-	node_t* prev = group;
-
-	while ((prev != NULL) && (prev->next != block)) {
-		prev = prev->next;
-	}
-
-	return prev;
-}
-
-int trim_group (group_t* group, unsigned int max_blocks) {
-	node_t* tmp_block = *group;
-	node_t* prev;
-	unsigned int diff = group_length(group) - max_blocks;;
-	int i;
-
-	if (group_length(group) <= max_blocks) {
-		return 0;
-	}
-
-	// go to the end of the group
-	while (tmp_block != NULL) {
-		prev = tmp_block;
-		tmp_block = tmp_block->next;
-	}
-
-	// delete obsolete blocks
-	while (diff > 0) {
-		tmp_block = prev;
-		prev = get_previous_block (*group, tmp_block);
-
-		for (i=0; i<tmp_block->block.block_size; ++i) {
-			free (tmp_block->block.data[i]);
-		}
-
-		free (tmp_block->block.data);
-		free (tmp_block);
-		tmp_block = NULL;
-		prev->next = NULL;
-
-		--diff;
-	}
-
-	return 0;
-}
-
-int trim_list (list_t* list, unsigned int const max_blocks) {
-	group_node_t* tmp = *list;
-
-	// go through all groups
-	while (tmp->next != NULL) {
-		if (trim_group(&tmp->group, max_blocks) != 0) {
-			return 1;
-		}
-
-		tmp = tmp->next;
-	}
-
-	return 0;
-}
-
-void group2array (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
-	node_t* tmp = *group;
-	int i, j, k;
-
-	while (tmp != NULL) {
-		for (k=0; k<z; ++k) {
-			for (j=0; j<len; ++j) {
-				for (i=0; i<len; ++i) {
-					arr[k][j][i] = tmp->block.data[j][i];
-				}
-			}
-			tmp = tmp->next;
-		}
-	}
-}
-
-void array2group (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
-	node_t* tmp = *group;
-	int i, j, k;
-
-	while (tmp != NULL) {
-		for (k=0; k<z; ++k) {
-			for (j=0; j<len; ++j) {
-				for (i=0; i<len; ++i) {
-					tmp->block.data[j][i] = arr[k][j][i];
-				}
-			}
-			tmp = tmp->next;
-		}
-	}
-}
-
-void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
-	int i, j, k;
-	double threshold = th_3d * (double)sigma * sqrt(2.0*log(bs*bs));
-	
-	for (k=0; k<z; ++k) {
-		for (j=0; j<bs; ++j) {
-			for (i=0; i<bs; ++i) {
-				mat[k][j][i] = (abs(mat[k][j][i])>threshold) ? mat[k][j][i] : 0.0;
-			}
-		}
-	}
-}
-
-double get_weight (int const bs, int const z, double mat[z][bs][bs]) {
-	int i, j, k;
-	int count = 0;
-
-	for (k=0; k<z; ++k) {
-		for (j=0; j<bs; ++j) {
-			for (i=0; i<bs; ++i) {
-				if (mat[k][j][i] != 0.0) {
-					++count;
-				}
-			}
-		}
-	}
-
-	return (count >= 1) ? 1.0/(double)count : 1.0;
-}
-
-void array2file (FILE* fd, int const len, int const z, double arr[z][len][len], char* const header) {
-	int i, j, k;
-
-	fprintf (fd, "[INFO] ... .............................................\n");
-	fprintf (fd, "[INFO] ... %s\n", header);
-	fprintf (fd, "[INFO] ... .............................................\n\n");
-
-	for (k=0; k<z; ++k) {
-		for (j=0; j<len; ++j) {
-			for (i=0; i<len; ++i) {
-				fprintf (fd, "%f ", arr[k][j][i]);
-			}
-			fprintf (fd, "\n");
-		}
-		fprintf (fd, "\n\n");
-	}
-	fprintf (fd, "\n\n\n");
-}
-
-int shrinkage (char* const kind, list_t* list, int const sigma, char* const path) {
-	FILE* fd = 0;
-	char outfile[40];
-	group_node_t* tmp = *list;
-	node_t* group;
-	unsigned int z;
-	double th_3d = 0.15;
-	int count = 0;
-
-	while (tmp != NULL) {
-		group = tmp->group;
-		z = group_length (&group);
-		unsigned int len = group->block.block_size;
-		double arr[z][len][len];
-
-		//obtain output filename
-		if (get_output_filename (outfile, path, "group", "txt", ++count) != 0) {
-			generate_error ("Unable to process output filename for group...");
-			return 1;
-		}
-
-		fd = fopen (outfile, "a");
-		
-		if (fd == NULL) {
-			generate_error ("Unable to open file for printing group...");
-			return 1;
-		}
-
-		// build a 3D-array from the actual group
-		group2array (&group, len, z, arr);
-
-		// append extracted group to log-file
-		array2file (fd, len, z, arr, "extracted group");
-
-		// perform 3D-DCT
-		dct_3d (len, z, arr);
-
-		// append transformed group to log-file
-		array2file (fd, len, z, arr, "group after 3D-DCT transformation");
-
-		// perform 3D-hard-thresholding
-		if (!strcmp(kind, "avg")) {
-			// average_3d (len, z, arr, th_3d, sigma);
-		}
-		else if (!strcmp(kind, "ht")) {
-			hard_threshold_3d (len, z, arr, th_3d, sigma);
-		}
-		else if (!strcmp(kind, "wnr")) {
-			// wiener_filtering_3d (len, z, arr, th_3d, sigma);
-		}
-		else if (!strcmp(kind, "none")) {
-			// do nothing
-		}
-		else {
-			generate_error ("Invalid kind of shrinkage...");
-			return 1;
-		}
-
-		//append thresholded group to log-file
-		array2file (fd, len, z, arr, "group after 3D-shrinkage-operation");
-
-		// calculate the weight for the actual block
-		tmp->weight = get_weight (len, z, arr);	
-
-		// perform 3D-IDCT
-		idct_3d (len, z, arr);
-
-		// append inverse-transformed group to log-file
-		array2file (fd, len, z, arr, "group after 3D-IDCT transformation");
-
-		// write array data back to a list node
-		array2group (&group, len, z, arr);
-
-		tmp = tmp->next;
-
-		fclose (fd);
-	}
-
-	// probably need more variables in interface
-	return 0;
-}
-
-int d_buf2file (unsigned int const width, unsigned int const height, double buf[width][height], char* const path, char* const prefix) {
-	FILE* fd = 0;
-	char outfile[40];
-	int i, j;
-
-	//obtain output filename
-	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
-		generate_error ("Unable to process output filename for buffer...");
-		return 1;
-	}
-
-	fd = fopen (outfile, "w");
-	
-	if (fd == NULL) {
-		generate_error ("Unable to open file for printing buffer...");
-		return 1;
-	}
-
-	fprintf (fd, "[INFO] ... .............................................\n");
-	fprintf (fd, "[INFO] ... %s\n", prefix);
-	fprintf (fd, "[INFO] ... .............................................\n\n");
-
-	for (j=0; j<height; ++j) {
-		for (i=0; i<width; ++i) {
-			fprintf (fd, "%f ", buf[j][i]);
-		}
-		fprintf (fd, "\n");
-	}
-
-	fclose (fd);
-
-	return 0;
-}
-
-int i_buf2file (unsigned int const width, unsigned int const height, unsigned int const buf[width][height], char* const path, char* const prefix) {
-	FILE* fd = 0;
-	char outfile[40];
-	int i, j;
-
-	//obtain output filename
-	if (get_output_filename (outfile, path, prefix, "txt", 0) != 0) {
-		generate_error ("Unable to process output filename for buffer...");
-		return 1;
-	}
-
-	fd = fopen (outfile, "w");
-	
-	if (fd == NULL) {
-		generate_error ("Unable to open file for printing buffer...");
-		return 1;
-	}
-
-	fprintf (fd, "[INFO] ... .............................................\n");
-	fprintf (fd, "[INFO] ... %s\n", prefix);
-	fprintf (fd, "[INFO] ... .............................................\n\n");
-
-	for (j=0; j<height; ++j) {
-		for (i=0; i<width; ++i) {
-			fprintf (fd, "%d ", buf[j][i]);
-		}
-		fprintf (fd, "\n");
-	}
-
-	fclose (fd);
-
-	return 0;
-}
-
-int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel) {
-	group_node_t* tmp = *list;
-	node_t* group;
-	block_t* block;
-	double w;							// weight of actual processed group
-	double ebuf[img->width][img->height];
-	double wbuf[img->width][img->height];
-	unsigned int estbuf[img->width][img->height];
-	int i, j;
-	int x, y, bs;
-	png_byte* row;
-	png_byte* pix;
-	char path[20];
-
-
-	while (tmp != NULL) {
-		group = tmp->group;
-		w = tmp->weight;
-		// if (block->x==15 && block->y==15) printf ("x,y: %d %d\n", block->x, block->y);
-		
-		while (group != NULL) {
-			block = &group->block;
-			x = block->x;
-			y = block->y;
-			bs = block->block_size;
-
-			// iterate over current block and extract values
-			for (j=0; j<bs; ++j) {
-				for (i=0; i<bs; ++i) {
-					// if (block->x==14 && block->y==14) {
-						// printf ("x,y: %d %d\n", block->x, block->y);
-						// printf ("block->data: %f\n", block->data[j][i]);
-						ebuf[j+y-(bs/2)][i+x-(bs/2)] += block->data[j][i] * tmp->weight;
-						wbuf[j+y-(bs/2)][i+x-(bs/2)] += tmp->weight;
-						// ebuf[j][i] += block->data[j][i];
-						// printf ("ebuf: %f\n", ebuf[j][i]);
-					// }
-				}
-				// if (block->x==15 && block->y==15) printf ("\n");
-			}
-			// if (block->x==15 && block->y==15) printf ("\n");
-
-			group = group->next;
-		}
-
-		tmp = tmp->next;
-	}
-
-	switch (channel) {
-		case 0:
-			sprintf (path, "dns/%s/y/", kind);
-			break;
-		case 1:
-			sprintf (path, "dns/%s/u/", kind);
-			break;
-		case 2:
-			sprintf (path, "dns/%s/v/", kind);
-			break;
-		default:
-			break;
-	}
-
-	if (strcmp(kind, "none")) {
-		if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
-			return 1;
-		}	
-		
-		if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
-			return 1;
-		}	
-	}
-
-	int maxest = 0;
-	int minest = 255;
-
-	// determine estimates by dividing ebuf with wbuf
-	for (j=0; j<img->height; ++j) {
-		for (i=0; i<img->width; ++i) {
-			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
-				estbuf[j][i] = (unsigned int)(limit(ebuf[j][i] / wbuf[j][i]));
-				// printf ("estbuf[%d][%d]: %d\n", j, i, estbuf[j][i]);
-				maxest = (estbuf[j][i] >= maxest) ? estbuf[j][i] : maxest;
-				minest = (estbuf[j][i] <= minest) ? estbuf[j][i] : minest;
-			}
-		}
-	}
-
-	printf ("max est: %d\n", maxest);
-	printf ("min est: %d\n", minest);
-
-	// write buffer with local estimates to file
-	if (strcmp(kind, "none")) {
-		if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
-			return 1;
-		}	
-	}
-
-	// write local estimates back to image
-	for (j=0; j<img->height; ++j) {
-		row = img->data[j];
-
-		for (i=0; i<img->width; ++i) {
-			pix = &(row[i*3]);
-			pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
-		}
-	}
-	
-	return 0;
-}
-
-// Wiener Stuff -----------------------------------------------
-int mean_2d(unsigned int const bs, block_t* block, double res[bs], unsigned int const dim) {
-	double sum = 0.0;
-	int i, j;
-
-	// check dimension parameter
-	if (!((dim==1) || (dim==2))) {
-		generate_error ("Wrong dimension for mean calculation...");
-		return 1;
-	}
-
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			sum += (dim==1) ? block->data[i][j] : block->data[j][i];
-		}
-		res[j] = sum / (double)bs;
-		sum = 0.0;
-	}
-
-	return 0;
-}
-
-int subtract_mean (unsigned int const bs, block_t* block, double res[bs][bs], unsigned int const dim) {
-	int i, j;
-	double mean[bs];
-
-	// obtain mean values
-	if (mean_2d(bs, block, mean, dim) != 0) {
-		return 1;
-	}
-
-	for (j=0; j<bs; ++j) {
-		for (i=0; i<bs; ++i) {
-			if (dim == 1) {
-				res[i][j] = limit (block->data[i][j] - mean[j]);
-			}
-			else if (dim == 2) {
-				res[j][i] = limit (block->data[j][i] - mean[j]);
-			}
-			else {
-				generate_error ("Wrong dimension for mean calculation...");
-				return 1;
-			}
-		}
-	}
-
-	return 0;
 }
 
 // performs a check, whether two given blocks are similar
@@ -1095,6 +638,460 @@ int block_matching (char* const kind,
 
 	return 0;
 }
+
+// --------------------------------------------------------------------------
+// METHODS FOR INTERMEDIATE STEPS
+// --------------------------------------------------------------------------
+int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
+	group_node_t* tmp = *ylist;
+	node_t* group;
+	block_t* block;
+	double w;							// weight of actual processed group
+	int x, y, bs;
+	double d;
+	group_t u_group = 0;				// group, which holds a set of similar blocks
+	group_t v_group = 0;				// group, which holds a set of similar blocks
+	block_t tmp_block;
+
+	// allocate block memory
+	if (new_block_struct(tmp->group->block.block_size, &tmp_block) != 0) {
+		return 1;
+	}
+
+	// go through all groups
+	while (tmp->next != NULL) {
+		group = tmp->group;
+		w = tmp->weight;
+
+		// iterate over all blocks within the actual group
+		while (group != NULL) {
+			block = &group->block;
+			x = block->x;
+			y = block->y;
+			bs = block->block_size;
+			d = group->distance;
+
+			// obtain block data for the u-channel
+			if (get_block (img, 1, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
+				return 1;
+			}
+				
+			// append block data to the regarding group
+			if (append_block (&u_group, &tmp_block, d) != 0) {
+				return 1;
+			}
+
+			// obtain block data for the v-channel
+			if (get_block (img, 2, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
+				return 1;
+			}
+				
+			// append block data to the regarding group
+			if (append_block (&v_group, &tmp_block, d) != 0) {
+				return 1;
+			}
+
+			group = group->next;
+		}
+
+		// add extracted groups to regarding lists
+		if (append_group (ulist, &u_group) != 0) {
+			return 1;
+		}
+
+		if (append_group (vlist, &v_group) != 0) {
+			return 1;
+		}
+
+		u_group = 0; //EVIL, cause same pointer
+		v_group = 0; //EVIL, cause same pointer
+		tmp = tmp->next;
+	}
+	// TODO delete dynamic memory
+
+	return 0;
+}
+
+node_t* get_previous_block (group_t group, node_t* block) {
+	node_t* prev = group;
+
+	while ((prev != NULL) && (prev->next != block)) {
+		prev = prev->next;
+	}
+
+	return prev;
+}
+
+int trim_group (group_t* group, unsigned int max_blocks) {
+	node_t* tmp_block = *group;
+	node_t* prev;
+	unsigned int diff = group_length(group) - max_blocks;;
+	int i;
+
+	if (group_length(group) <= max_blocks) {
+		return 0;
+	}
+
+	// go to the end of the group
+	while (tmp_block != NULL) {
+		prev = tmp_block;
+		tmp_block = tmp_block->next;
+	}
+
+	// delete obsolete blocks
+	while (diff > 0) {
+		tmp_block = prev;
+		prev = get_previous_block (*group, tmp_block);
+
+		for (i=0; i<tmp_block->block.block_size; ++i) {
+			free (tmp_block->block.data[i]);
+		}
+
+		free (tmp_block->block.data);
+		free (tmp_block);
+		tmp_block = NULL;
+		prev->next = NULL;
+
+		--diff;
+	}
+
+	return 0;
+}
+
+int trim_list (list_t* list, unsigned int const max_blocks) {
+	group_node_t* tmp = *list;
+
+	// go through all groups
+	while (tmp->next != NULL) {
+		if (trim_group(&tmp->group, max_blocks) != 0) {
+			return 1;
+		}
+
+		tmp = tmp->next;
+	}
+
+	return 0;
+}
+
+
+// --------------------------------------------------------------------------
+// METHODS FOR DENOISING
+// --------------------------------------------------------------------------
+void group2array (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
+	node_t* tmp = *group;
+	int i, j, k;
+
+	while (tmp != NULL) {
+		for (k=0; k<z; ++k) {
+			for (j=0; j<len; ++j) {
+				for (i=0; i<len; ++i) {
+					arr[k][j][i] = tmp->block.data[j][i];
+				}
+			}
+			tmp = tmp->next;
+		}
+	}
+}
+
+void array2group (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
+	node_t* tmp = *group;
+	int i, j, k;
+
+	while (tmp != NULL) {
+		for (k=0; k<z; ++k) {
+			for (j=0; j<len; ++j) {
+				for (i=0; i<len; ++i) {
+					tmp->block.data[j][i] = arr[k][j][i];
+				}
+			}
+			tmp = tmp->next;
+		}
+	}
+}
+
+// shrinkage function for averaging TODO
+void average_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
+}
+
+// shrinkage function for hard-thresholding
+void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
+	int i, j, k;
+	double threshold = th_3d * (double)sigma * sqrt(2.0*log(bs*bs));
+	
+	for (k=0; k<z; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<bs; ++i) {
+				mat[k][j][i] = (abs(mat[k][j][i])>threshold) ? mat[k][j][i] : 0.0;
+			}
+		}
+	}
+}
+
+// shrinkage function for averaging TODO
+void wiener_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
+}
+
+// determines the weight for a given group after shrinkage
+double get_weight (int const bs, int const z, double mat[z][bs][bs]) {
+	int i, j, k;
+	int count = 0;
+
+	for (k=0; k<z; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<bs; ++i) {
+				if (mat[k][j][i] != 0.0) {
+					++count;
+				}
+			}
+		}
+	}
+
+	return (count >= 1) ? 1.0/(double)count : 1.0;
+}
+
+int shrinkage (char* const kind, list_t* list, int const sigma, char* const path) {
+	FILE* fd = 0;
+	char outfile[40];
+	group_node_t* tmp = *list;
+	node_t* group;
+	unsigned int z;
+	double th_3d = 0.15;
+	int count = 0;
+
+	while (tmp != NULL) {
+		group = tmp->group;
+		z = group_length (&group);
+		unsigned int len = group->block.block_size;
+		double arr[z][len][len];
+
+		//obtain output filename
+		if (get_output_filename (outfile, path, "group", "txt", ++count) != 0) {
+			generate_error ("Unable to process output filename for group...");
+			return 1;
+		}
+
+		fd = fopen (outfile, "a");
+		
+		if (fd == NULL) {
+			generate_error ("Unable to open file for printing group...");
+			return 1;
+		}
+
+		// build a 3D-array from the actual group
+		group2array (&group, len, z, arr);
+
+		// append extracted group to log-file
+		array2file (fd, len, z, arr, "extracted group");
+
+		// perform 3D-DCT
+		dct_3d (len, z, arr);
+
+		// append transformed group to log-file
+		array2file (fd, len, z, arr, "group after 3D-DCT transformation");
+
+		// perform 3D-hard-thresholding
+		if (!strcmp(kind, "avg")) {
+			average_3d (len, z, arr, th_3d, sigma);
+		}
+		else if (!strcmp(kind, "ht")) {
+			hard_threshold_3d (len, z, arr, th_3d, sigma);
+		}
+		else if (!strcmp(kind, "wnr")) {
+			wiener_3d (len, z, arr, th_3d, sigma);
+		}
+		else if (!strcmp(kind, "none")) {
+			// do nothing
+		}
+		else {
+			generate_error ("Invalid kind of shrinkage...");
+			return 1;
+		}
+
+		//append thresholded group to log-file
+		array2file (fd, len, z, arr, "group after 3D-shrinkage-operation");
+
+		// calculate the weight for the actual block
+		tmp->weight = get_weight (len, z, arr);	
+
+		// perform 3D-IDCT
+		idct_3d (len, z, arr);
+
+		// append inverse-transformed group to log-file
+		array2file (fd, len, z, arr, "group after 3D-IDCT transformation");
+
+		// write array data back to a list node
+		array2group (&group, len, z, arr);
+
+		tmp = tmp->next;
+
+		fclose (fd);
+	}
+
+	// probably need more variables in interface
+	return 0;
+}
+
+// --------------------------------------------------------------------------
+// METHOD FOR AGGREGATING
+// --------------------------------------------------------------------------
+int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel) {
+	group_node_t* tmp = *list;
+	node_t* group;
+	block_t* block;
+	double w;							// weight of actual processed group
+	double ebuf[img->width][img->height];
+	double wbuf[img->width][img->height];
+	unsigned int estbuf[img->width][img->height];
+	int i, j;
+	int x, y, bs;
+	png_byte* row;
+	png_byte* pix;
+	char path[20];
+
+
+	while (tmp != NULL) {
+		group = tmp->group;
+		w = tmp->weight;
+		// if (block->x==15 && block->y==15) printf ("x,y: %d %d\n", block->x, block->y);
+		
+		while (group != NULL) {
+			block = &group->block;
+			x = block->x;
+			y = block->y;
+			bs = block->block_size;
+
+			// iterate over current block and extract values
+			for (j=0; j<bs; ++j) {
+				for (i=0; i<bs; ++i) {
+					// if (block->x==14 && block->y==14) {
+						// printf ("x,y: %d %d\n", block->x, block->y);
+						// printf ("block->data: %f\n", block->data[j][i]);
+						ebuf[j+y-(bs/2)][i+x-(bs/2)] += block->data[j][i] * tmp->weight;
+						wbuf[j+y-(bs/2)][i+x-(bs/2)] += tmp->weight;
+						// ebuf[j][i] += block->data[j][i];
+						// printf ("ebuf: %f\n", ebuf[j][i]);
+					// }
+				}
+				// if (block->x==15 && block->y==15) printf ("\n");
+			}
+			// if (block->x==15 && block->y==15) printf ("\n");
+
+			group = group->next;
+		}
+
+		tmp = tmp->next;
+	}
+
+	switch (channel) {
+		case 0:
+			sprintf (path, "dns/%s/y/", kind);
+			break;
+		case 1:
+			sprintf (path, "dns/%s/u/", kind);
+			break;
+		case 2:
+			sprintf (path, "dns/%s/v/", kind);
+			break;
+		default:
+			break;
+	}
+
+	if (strcmp(kind, "none")) {
+		if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
+			return 1;
+		}	
+		
+		if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
+			return 1;
+		}	
+	}
+
+	int maxest = 0;
+	int minest = 255;
+
+	// determine estimates by dividing ebuf with wbuf
+	for (j=0; j<img->height; ++j) {
+		for (i=0; i<img->width; ++i) {
+			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
+				estbuf[j][i] = (unsigned int)(limit(ebuf[j][i] / wbuf[j][i]));
+				// printf ("estbuf[%d][%d]: %d\n", j, i, estbuf[j][i]);
+				maxest = (estbuf[j][i] >= maxest) ? estbuf[j][i] : maxest;
+				minest = (estbuf[j][i] <= minest) ? estbuf[j][i] : minest;
+			}
+		}
+	}
+
+	printf ("max est: %d\n", maxest);
+	printf ("min est: %d\n", minest);
+
+	// write buffer with local estimates to file
+	if (strcmp(kind, "none")) {
+		if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
+			return 1;
+		}	
+	}
+
+	// write local estimates back to image
+	for (j=0; j<img->height; ++j) {
+		row = img->data[j];
+
+		for (i=0; i<img->width; ++i) {
+			pix = &(row[i*3]);
+			pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
+		}
+	}
+	
+	return 0;
+}
+
+//					// Wiener Stuff -----------------------------------------------
+//					int mean_2d(unsigned int const bs, block_t* block, double res[bs], unsigned int const dim) {
+//						double sum = 0.0;
+//						int i, j;
+//					
+//						// check dimension parameter
+//						if (!((dim==1) || (dim==2))) {
+//							generate_error ("Wrong dimension for mean calculation...");
+//							return 1;
+//						}
+//					
+//						for (j=0; j<bs; ++j) {
+//							for (i=0; i<bs; ++i) {
+//								sum += (dim==1) ? block->data[i][j] : block->data[j][i];
+//							}
+//							res[j] = sum / (double)bs;
+//							sum = 0.0;
+//						}
+//					
+//						return 0;
+//					}
+//					
+//					int subtract_mean (unsigned int const bs, block_t* block, double res[bs][bs], unsigned int const dim) {
+//						int i, j;
+//						double mean[bs];
+//					
+//						// obtain mean values
+//						if (mean_2d(bs, block, mean, dim) != 0) {
+//							return 1;
+//						}
+//					
+//						for (j=0; j<bs; ++j) {
+//							for (i=0; i<bs; ++i) {
+//								if (dim == 1) {
+//									res[i][j] = limit (block->data[i][j] - mean[j]);
+//								}
+//								else if (dim == 2) {
+//									res[j][i] = limit (block->data[j][i] - mean[j]);
+//								}
+//								else {
+//									generate_error ("Wrong dimension for mean calculation...");
+//									return 1;
+//								}
+//							}
+//						}
+//					
+//						return 0;
+//					}
 
 int bm3d (char* const infile, 			// name of input file
 			 char* const kind, 				// kind of shrinkage (ht, wnr, avg)
