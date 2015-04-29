@@ -810,7 +810,30 @@ void array2group (group_t* group, unsigned int len, unsigned const z, double arr
 }
 
 // shrinkage function for averaging TODO
-void average_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
+void average_3d (int const bs, int const z, double mat[z][bs][bs]) {
+	int i, j, k;
+	double avg[bs][bs];
+	double sum = 0.0;
+	
+	// calculate average values
+	for (k=0; k<bs; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<z; ++i) {
+				sum += mat[i][j][k];
+			}
+			avg[j][k] = sum / (double)z;
+			sum = 0.0;
+		}
+	}
+
+	// write average values to group
+	for (k=0; k<z; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<bs; ++i) {
+				mat[k][j][i] = avg[j][i];
+			}
+		}
+	}
 }
 
 // shrinkage function for hard-thresholding
@@ -849,14 +872,22 @@ double get_weight (int const bs, int const z, double mat[z][bs][bs]) {
 	return (count >= 1) ? 1.0/(double)count : 1.0;
 }
 
-int shrinkage (char* const kind, list_t* list, int const sigma, char* const path) {
+int shrinkage (char* const kind, list_t* list, int const sigma, int const channel) {
 	FILE* fd = 0;
 	char outfile[40];
+	char path[30];
+	char ch;
 	group_node_t* tmp = *list;
 	node_t* group;
 	unsigned int z;
 	double th_3d = 0.15;
 	int count = 0;
+
+	// obtain letter for channel
+	ch = (channel==0) ? 'y' : (channel==1) ? 'u' : (channel==2) ? 'v' : 0;
+
+	// determine path for file-writing
+	sprintf (path, "dns/%s/%c/grp/", kind, ch);
 
 	while (tmp != NULL) {
 		group = tmp->group;
@@ -891,7 +922,7 @@ int shrinkage (char* const kind, list_t* list, int const sigma, char* const path
 
 		// perform 3D-hard-thresholding
 		if (!strcmp(kind, "avg")) {
-			average_3d (len, z, arr, th_3d, sigma);
+			average_3d (len, z, arr);
 		}
 		else if (!strcmp(kind, "ht")) {
 			hard_threshold_3d (len, z, arr, th_3d, sigma);
@@ -911,7 +942,12 @@ int shrinkage (char* const kind, list_t* list, int const sigma, char* const path
 		array2file (fd, len, z, arr, "group after 3D-shrinkage-operation");
 
 		// calculate the weight for the actual block
-		tmp->weight = get_weight (len, z, arr);	
+		if (!strcmp(kind, "none")) {
+			tmp->weight = 1.0;
+		}
+		else {
+			tmp->weight = get_weight (len, z, arr);	
+		}
 
 		// perform 3D-IDCT
 		idct_3d (len, z, arr);
@@ -996,15 +1032,13 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			break;
 	}
 
-	if (strcmp(kind, "none")) {
-		if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
-			return 1;
-		}	
-		
-		if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
-			return 1;
-		}	
-	}
+	if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
+		return 1;
+	}	
+	
+	if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
+		return 1;
+	}	
 
 	int maxest = 0;
 	int minest = 255;
@@ -1108,6 +1142,7 @@ int bm3d (char* const infile, 			// name of input file
 	png_img tmp;								// temporary image for marking the blocks
 	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
+	char path[30];
 	char prefix[20];
 	list_t y_list = 0;					// list of groups	of the y-channel
 	list_t u_list = 0;					// list of groups of the u-channel
@@ -1227,7 +1262,9 @@ int bm3d (char* const infile, 			// name of input file
 	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
 	printf ("[INFO] ... end of block-matching...\n\n");
 
-	if (print_list(y_list, "grp/org/ht/y/", "group") != 0) {
+	sprintf (path, "grp/org/%s/y/", kind);
+
+	if (print_list(y_list, path, "group") != 0) {
 		return 1;
 	}
 
@@ -1266,15 +1303,21 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	if (print_list(y_list, "grp/trm/ht/y/", "group") != 0) {
+	sprintf (path, "grp/trm/%s/y/", kind);
+
+	if (print_list(y_list, path, "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list, "grp/trm/ht/u/", "group") != 0) {
+	sprintf (path, "grp/trm/%s/u/", kind);
+
+	if (print_list(u_list, path, "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list, "grp/trm/ht/v/", "group") != 0) {
+	sprintf (path, "grp/trm/%s/v/", kind);
+
+	if (print_list(v_list, path, "group") != 0) {
 		return 1;
 	}
 
@@ -1287,7 +1330,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ...    determining estimates...\n");
 	printf ("[INFO] ...       luminance channel...\n");
 
-	if (shrinkage(kind, &y_list, sigma, "dns/ht/y/grp/") != 0) {
+	if (shrinkage(kind, &y_list, sigma, 0) != 0) {
 		return 1;
 	}
 
@@ -1301,15 +1344,21 @@ int bm3d (char* const infile, 			// name of input file
 	// 	return 1;
 	// }
 
-	if (print_list(y_list, "grp/est/ht/y/", "group") != 0) {
+	sprintf (path, "grp/est/%s/y/", kind);
+
+	if (print_list(y_list, path, "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(u_list, "grp/est/ht/u/", "group") != 0) {
+	sprintf (path, "grp/est/%s/u/", kind);
+
+	if (print_list(u_list, path, "group") != 0) {
 		return 1;
 	}
 
-	if (print_list(v_list, "grp/est/ht/v/", "group") != 0) {
+	sprintf (path, "grp/est/%s/v/", kind);
+
+	if (print_list(v_list, path, "group") != 0) {
 		return 1;
 	}
 

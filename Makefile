@@ -2,10 +2,10 @@ CC      = clang
 BIN     = noising param_gen bm3d
 DEFDIRS = objdir resdir bmsdir 
 IMGDIRS = rgbdir yuvgrpdir
-ORGDIRS = orghtydir orghtudir orghtvdir orgwnydir orgwnudir orgwnvdir 
-TRMDIRS = trmhtydir trmhtudir trmhtvdir trmwnydir trmwnudir trmwnvdir
-ESTDIRS = esthtydir esthtudir esthtvdir estwnydir estwnudir estwnvdir
-DNSDIRS = dnshtydir dnshtudir dnshtvdir dnswnydir dnswnudir dnswnvdir
+ORGDIRS = orgavydir orgavudir orgavvdir orghtydir orghtudir orghtvdir orgwnydir orgwnudir orgwnvdir orgnoydir orgnoudir orgnovdir 
+TRMDIRS = trmavydir trmavudir trmavvdir trmhtydir trmhtudir trmhtvdir trmwnydir trmwnudir trmwnvdir trmnoydir trmnoudir trmnovdir
+ESTDIRS = estavydir estavudir estavvdir esthtydir esthtudir esthtvdir estwnydir estwnudir estwnvdir estnoydir estnoudir estnovdir
+DNSDIRS = dnsavydir dnsavudir dnsavvdir dnshtydir dnshtudir dnshtvdir dnswnydir dnswnudir dnswnvdir dnsnoydir dnsnoudir dnsnovdir
 SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
@@ -32,6 +32,15 @@ rgbdir:
 yuvgrpdir:
 	$(MKDIR) -p $(IMGDIR)/yuv/grp
 
+orgavydir:
+	$(MKDIR) -p $(GRPDIR)/org/avg/y
+
+orgavudir:
+	$(MKDIR) -p $(GRPDIR)/org/avg/u
+
+orgavvdir:
+	$(MKDIR) -p $(GRPDIR)/org/avg/v
+
 orghtydir:
 	$(MKDIR) -p $(GRPDIR)/org/ht/y
 
@@ -49,6 +58,24 @@ orgwnudir:
 
 orgwnvdir:
 	$(MKDIR) -p $(GRPDIR)/org/wnr/v
+
+orgnoydir:
+	$(MKDIR) -p $(GRPDIR)/org/none/y
+
+orgnoudir:
+	$(MKDIR) -p $(GRPDIR)/org/none/u
+
+orgnovdir:
+	$(MKDIR) -p $(GRPDIR)/org/none/v
+
+trmavydir:
+	$(MKDIR) -p $(GRPDIR)/trm/avg/y
+
+trmavudir:
+	$(MKDIR) -p $(GRPDIR)/trm/avg/u
+
+trmavvdir:
+	$(MKDIR) -p $(GRPDIR)/trm/avg/v
 
 trmhtydir:
 	$(MKDIR) -p $(GRPDIR)/trm/ht/y
@@ -68,6 +95,24 @@ trmwnudir:
 trmwnvdir:
 	$(MKDIR) -p $(GRPDIR)/trm/wnr/v
 
+trmnoydir:
+	$(MKDIR) -p $(GRPDIR)/trm/none/y
+
+trmnoudir:
+	$(MKDIR) -p $(GRPDIR)/trm/none/u
+
+trmnovdir:
+	$(MKDIR) -p $(GRPDIR)/trm/none/v
+
+estavydir:
+	$(MKDIR) -p $(GRPDIR)/est/avg/y
+
+estavudir:
+	$(MKDIR) -p $(GRPDIR)/est/avg/u
+
+estavvdir:
+	$(MKDIR) -p $(GRPDIR)/est/avg/v
+
 esthtydir:
 	$(MKDIR) -p $(GRPDIR)/est/ht/y
 
@@ -86,11 +131,29 @@ estwnudir:
 estwnvdir:
 	$(MKDIR) -p $(GRPDIR)/est/wnr/v
 
+estnoydir:
+	$(MKDIR) -p $(GRPDIR)/est/none/y
+
+estnoudir:
+	$(MKDIR) -p $(GRPDIR)/est/none/u
+
+estnovdir:
+	$(MKDIR) -p $(GRPDIR)/est/none/v
+
 resdir:
 	$(MKDIR) -p $(RESDIR)
 
 bmsdir:
 	$(MKDIR) -p $(BMSDIR)
+
+dnsavydir:
+	$(MKDIR) -p $(DNSDIR)/avg/y/grp
+
+dnsavudir:
+	$(MKDIR) -p $(DNSDIR)/avg/u/grp
+
+dnsavvdir:
+	$(MKDIR) -p $(DNSDIR)/avg/v/grp
 
 dnshtydir:
 	$(MKDIR) -p $(DNSDIR)/ht/y/grp
@@ -109,6 +172,15 @@ dnswnudir:
 
 dnswnvdir:
 	$(MKDIR) -p $(DNSDIR)/wnr/v/grp
+
+dnsnoydir:
+	$(MKDIR) -p $(DNSDIR)/none/y/grp
+
+dnsnoudir:
+	$(MKDIR) -p $(DNSDIR)/none/u/grp
+
+dnsnovdir:
+	$(MKDIR) -p $(DNSDIR)/none/v/grp
 
 noising: $(OBJDIR)/noising.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o
 	@echo "Link $< ..."
