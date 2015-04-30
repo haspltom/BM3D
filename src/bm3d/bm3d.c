@@ -111,7 +111,7 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 		tmp_block = tmp->group;
 		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
 
-		if (!strcmp(path, "grp/est/y/") || !strcmp(path, "grp/est/u/") || !strcmp(path, "grp/est/v/")) {
+		if (strstr(path, "est") != NULL) {
 			fprintf (fd, "[INFO] ... weight of group: %f\n", tmp->weight);
 		}
 
@@ -1059,11 +1059,9 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	printf ("min est: %d\n", minest);
 
 	// write buffer with local estimates to file
-	if (strcmp(kind, "none")) {
-		if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
-			return 1;
-		}	
-	}
+	if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
+		return 1;
+	}	
 
 	// write local estimates back to image
 	for (j=0; j<img->height; ++j) {
@@ -1071,7 +1069,10 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 
 		for (i=0; i<img->width; ++i) {
 			pix = &(row[i*3]);
-			pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
+			if (estbuf[j][i] != 0) {
+				pix[channel] = estbuf[j][i];
+			}
+			// pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
 		}
 	}
 	
@@ -1328,21 +1329,21 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of denoising...\n");
 	printf ("[INFO] ...    determining estimates...\n");
-	printf ("[INFO] ...       luminance channel...\n");
 
+	printf ("[INFO] ...       luminance channel...\n");
 	if (shrinkage(kind, &y_list, sigma, 0) != 0) {
 		return 1;
 	}
 
-	// printf ("[INFO] ...          -> chrominance channel 1...\n");
-	// if (shrinkage("ht", u_list, sigma, "dns/ht/u/grp/") != 0) {
-	// 	return 1;
-	// }
+	printf ("[INFO] ...       chrominance channel 1...\n");
+	if (shrinkage(kind, &u_list, sigma, 1) != 0) {
+		return 1;
+	}
 
-	// printf ("[INFO] ...          -> chrominance channel 2...\n");
-	// if (shrinkage("ht", v_list, sigma, "dns/ht/v/grp/") != 0) {
-	// 	return 1;
-	// }
+	printf ("[INFO] ...       chrominance channel 2...\n");
+	if (shrinkage(kind, &v_list, sigma, 1) != 0) {
+		return 1;
+	}
 
 	sprintf (path, "grp/est/%s/y/", kind);
 
@@ -1366,19 +1367,19 @@ int bm3d (char* const infile, 			// name of input file
 	// AGGREGATION
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ...    aggregating local estimates...\n");
-	printf ("[INFO] ...       luminance channel...\n");
 
+	printf ("[INFO] ...       luminance channel...\n");
 	if (aggregate(kind, &img, &y_list, 0) != 0) {
 		return 1;
 	}
 
-	// printf ("[INFO] ...    -> chrominance channel 1...\n");
-	// if (aggregate("ht", &img, &u_list, 1) != 0) {
+	printf ("[INFO] ...       chrominance channel 1...\n");
+	// if (aggregate(kind, &img, &u_list, 1) != 0) {
 	// 	return 1;
 	// }
 
-	// printf ("[INFO] ...    -> chrominance channel 2...\n");
-	// if (aggregate("ht", &img, &v_list, 2) != 0) {
+	printf ("[INFO] ...       chrominance channel 2...\n");
+	// if (aggregate(kind, &img, &v_list, 2) != 0) {
 	// 	return 1;
 	// }
 
