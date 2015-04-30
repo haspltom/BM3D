@@ -7,7 +7,7 @@
 // function that make the coversion from RGB to YUV
 void rgb2yuv (png_img* img) {
 	int i, j;
-	unsigned int y, u, v, r, g, b;
+	int y, u, v, r, g, b;
 	png_byte* row;
 	png_byte* tmp;
 
@@ -23,9 +23,9 @@ void rgb2yuv (png_img* img) {
 			b = tmp[2];
 
 			// convert pixel elements
-			y = (unsigned int)(limit(0 + 0.299*r + 0.587*g + 0.114*b));
-			u = (unsigned int)(limit(128 - 0.168736*r - 0.331264*g + 0.5*b));
-			v = (unsigned int)(limit(128 + 0.5*r - 0.418688*g - 0.081312*b));
+			y = limit(0 + 0.299*r + 0.587*g + 0.114*b);
+			u = limit(128 - 0.168736*r - 0.331264*g + 0.5*b);
+			v = limit(128 + 0.5*r - 0.418688*g - 0.081312*b);
 
 			// write back YUV values
 			tmp[0] = y;
@@ -38,7 +38,7 @@ void rgb2yuv (png_img* img) {
 // function that make the coversion from YUV to RGB
 void yuv2rgb (png_img* img) {
 	int i, j;
-	unsigned int y, u, v, r, g, b;
+	int y, u, v, r, g, b;
 	png_byte* row;
 	png_byte* tmp;
 
@@ -54,9 +54,9 @@ void yuv2rgb (png_img* img) {
 			v = tmp[2] - 128;
 			
 			// convert pixel elements
-			r = (unsigned int)(limit(y + 1.402*v));
-			g = (unsigned int)(limit(y - 0.3441*u - 0.7141*v));
-			b = (unsigned int)(limit(y + 1.772*u));
+			r = limit(y + 1.402*v);
+			g = limit(y - 0.3441*u - 0.7141*v);
+			b = limit(y + 1.772*u);
 			
 			// write back YUV values
 			tmp[0] = r;
@@ -193,8 +193,8 @@ void idct_3d (int const len, int const z, double arr[z][len][len]) {
 
 
 // limits a given value to 255
-double limit (double const x) {
-	return (x < 0.0) ? .00 : (x > 255.0) ? 255.0 : x;
+int limit (int const x) {
+	return (x < 0) ? 0 : (x > 255) ? 255 : x;
 }
 
 // produces an output filename from given string literals

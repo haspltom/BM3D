@@ -15,7 +15,7 @@ extern void dct_2d (int const len, double arr[len][len]);
 extern void dct_3d (int const len, int const z, double arr[z][len][len]);
 extern void idct_3d (int const len, int const z, double arr[z][len][len]);
 
-extern double limit (double const x);
+extern int limit (int const x);
 extern int get_output_filename (char* outfile, char* const path, char* const prefix, char* const ext, int const attr);
 
 #endif // UTILS_H
