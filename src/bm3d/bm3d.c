@@ -71,6 +71,69 @@ void free_group (group_t* group) {
 	}
 }
 
+int img2array (png_img* img, int const channel) {
+	FILE* fd;
+	char name[10];
+	char outfile[30];
+	int array[img->width][img->height];
+	int i, j;
+	png_byte* row;
+	png_byte* tmp;
+
+	// select filename
+	switch (channel) {
+		case 0:
+			sprintf (name, "y_array");
+			break;
+		case 1:
+			sprintf (name, "u_array");
+			break;
+		case 2:
+			sprintf (name, "v_array");
+			break;
+		default:
+			generate_error ("Invalid channel for array building...");
+			return 1;
+			break;
+	}
+
+	// obtain entire output filename
+	if (get_output_filename (outfile, "dns/", name, "txt", 0) != 0) {
+		generate_error ("Unable to process output filename for group...");
+		return 1;
+	}
+
+	fd = fopen (outfile, "w");
+	
+	if (fd == NULL) {
+		generate_error ("Unable to open file for printing group...");
+		return 1;
+	}
+
+	// extract pixel values
+	for (j=0; j<img->height; ++j) {
+		row = img->data[j];
+
+		for (i=0; i<img->width; ++i) {
+			tmp = &(row[i*3]);
+
+			array[j][i] = tmp[channel];
+		}
+	}
+
+	// write array to file
+	for (j=0; j<img->height; ++j) {
+		for (i=0; i<img->width; ++i) {
+			fprintf (fd, "%d ", array[j][i]);
+		}
+		fprintf (fd, "\n");
+	}
+
+	fclose (fd);
+
+	return 0;
+}
+
 // --------------------------------------------------------------------------
 // METHODS FOR FILE-WRITING
 // --------------------------------------------------------------------------
@@ -186,7 +249,7 @@ int d_buf2file (unsigned int const width, unsigned int const height, double buf[
 	return 0;
 }
 
-int i_buf2file (unsigned int const width, unsigned int const height, unsigned int const buf[width][height], char* const path, char* const prefix) {
+int i_buf2file (unsigned int const width, unsigned int const height, int const buf[width][height], char* const path, char* const prefix) {
 	FILE* fd = 0;
 	char outfile[40];
 	int i, j;
@@ -625,6 +688,7 @@ int block_matching (char* const kind,
 					}
 
 					// write output image
+					yuv2rgb(tmp);
 					if (png_write(tmp, outfile) != 0) {
 						return 1;
 					}
@@ -652,6 +716,12 @@ int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 	group_t u_group = 0;				// group, which holds a set of similar blocks
 	group_t v_group = 0;				// group, which holds a set of similar blocks
 	block_t tmp_block;
+
+	// validate input list
+	if (tmp == NULL) {
+		generate_error ("Invalid reference list for extracting chrominance channels...");
+		return 1;
+	}
 
 	// allocate block memory
 	if (new_block_struct(tmp->group->block.block_size, &tmp_block) != 0) {
@@ -760,6 +830,12 @@ int trim_group (group_t* group, unsigned int max_blocks) {
 
 int trim_list (list_t* list, unsigned int const max_blocks) {
 	group_node_t* tmp = *list;
+
+	// validate input list
+	if (tmp == NULL) {
+		generate_error ("Invalid reference list for trimming list...");
+		return 1;
+	}
 
 	// go through all groups
 	while (tmp->next != NULL) {
@@ -914,17 +990,17 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 		// append extracted group to log-file
 		array2file (fd, len, z, arr, "extracted group");
 
-		// perform 3D-DCT
-		dct_3d (len, z, arr);
-
-		// append transformed group to log-file
-		array2file (fd, len, z, arr, "group after 3D-DCT transformation");
-
 		// perform 3D-hard-thresholding
 		if (!strcmp(kind, "avg")) {
 			average_3d (len, z, arr);
 		}
 		else if (!strcmp(kind, "ht")) {
+			// perform 3D-DCT
+			dct_3d (len, z, arr);
+
+			// append transformed group to log-file
+			array2file (fd, len, z, arr, "group after 3D-DCT transformation");
+
 			hard_threshold_3d (len, z, arr, th_3d, sigma);
 		}
 		else if (!strcmp(kind, "wnr")) {
@@ -945,15 +1021,20 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 		if (!strcmp(kind, "none")) {
 			tmp->weight = 1.0;
 		}
+		if (!strcmp(kind, "avg")) {
+			tmp->weight = 1.0;
+		}
 		else {
 			tmp->weight = get_weight (len, z, arr);	
 		}
 
-		// perform 3D-IDCT
-		idct_3d (len, z, arr);
+		if (!strcmp(kind, "ht")) {
+			// perform 3D-IDCT
+			idct_3d (len, z, arr);
 
-		// append inverse-transformed group to log-file
-		array2file (fd, len, z, arr, "group after 3D-IDCT transformation");
+			// append inverse-transformed group to log-file
+			array2file (fd, len, z, arr, "group after 3D-IDCT transformation");
+		}
 
 		// write array data back to a list node
 		array2group (&group, len, z, arr);
@@ -975,14 +1056,15 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	node_t* group;
 	block_t* block;
 	double w;							// weight of actual processed group
-	double ebuf[img->width][img->height];
-	double wbuf[img->width][img->height];
-	unsigned int estbuf[img->width][img->height];
+	double ebuf[img->height][img->width];
+	double wbuf[img->height][img->width];
+	int estbuf[img->height][img->width];
 	int i, j;
 	int x, y, bs;
 	png_byte* row;
 	png_byte* pix;
 	char path[20];
+	int yindex, xindex = 0;
 
 
 	while (tmp != NULL) {
@@ -992,18 +1074,25 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 		
 		while (group != NULL) {
 			block = &group->block;
-			x = block->x;
-			y = block->y;
 			bs = block->block_size;
+			x = block->x - (bs/2);
+			y = block->y - (bs/2);
+			// if (x==8 && y==8) printf ("x,y: %d %d\nw: %f\n", x, y, tmp->weight);
 
 			// iterate over current block and extract values
 			for (j=0; j<bs; ++j) {
 				for (i=0; i<bs; ++i) {
 					// if (block->x==14 && block->y==14) {
-						// printf ("x,y: %d %d\n", block->x, block->y);
 						// printf ("block->data: %f\n", block->data[j][i]);
-						ebuf[j+y-(bs/2)][i+x-(bs/2)] += block->data[j][i] * tmp->weight;
-						wbuf[j+y-(bs/2)][i+x-(bs/2)] += tmp->weight;
+						yindex = j+y;
+						xindex = i+x;
+						ebuf[yindex][xindex] += block->data[j][i] * tmp->weight;
+						wbuf[yindex][xindex] += tmp->weight;
+						if (xindex==174 && yindex==98) {
+							printf ("block_data: %f\n", block->data[j][i]);
+							printf ("weight: %f\n", tmp->weight);
+						}
+						// printf ("(%d,%d) ", xindex, yindex);
 						// ebuf[j][i] += block->data[j][i];
 						// printf ("ebuf: %f\n", ebuf[j][i]);
 					// }
@@ -1011,6 +1100,7 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 				// if (block->x==15 && block->y==15) printf ("\n");
 			}
 			// if (block->x==15 && block->y==15) printf ("\n");
+			// printf ("\n");
 
 			group = group->next;
 		}
@@ -1047,10 +1137,14 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	for (j=0; j<img->height; ++j) {
 		for (i=0; i<img->width; ++i) {
 			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
-				estbuf[j][i] = (unsigned int)(limit(ebuf[j][i] / wbuf[j][i]));
+				estbuf[j][i] = ebuf[j][i] / wbuf[j][i];
+				if (estbuf[j][i] < 0) {
+					printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
+					printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
+				}
 				// printf ("estbuf[%d][%d]: %d\n", j, i, estbuf[j][i]);
-				maxest = (estbuf[j][i] >= maxest) ? estbuf[j][i] : maxest;
-				minest = (estbuf[j][i] <= minest) ? estbuf[j][i] : minest;
+				maxest = (estbuf[j][i] > maxest) ? estbuf[j][i] : maxest;
+				minest = (estbuf[j][i] < minest) ? estbuf[j][i] : minest;
 			}
 		}
 	}
@@ -1070,7 +1164,10 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 		for (i=0; i<img->width; ++i) {
 			pix = &(row[i*3]);
 			if (estbuf[j][i] != 0) {
+				// printf ("org: %d   est: %d\n", pix[channel], estbuf[j][i]);
+				// printf ("pixel position: %d/%d\n", i, j);
 				pix[channel] = estbuf[j][i];
+				// pix[channel] = pix[channel];
 			}
 			// pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
 		}
@@ -1218,6 +1315,22 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ... end of color conversion...\n\n");
+
+	// ----------------------------------------------------------------------
+	// IMAGE-TO-ARRAY CONVERSION
+	// ----------------------------------------------------------------------
+	printf ("[INFO] ... launch of conversion from image to array...\n");
+
+	printf ("[INFO] ...    luminance channel...\n");
+	img2array (&img, 0);
+
+	printf ("[INFO] ...    chrominance channel 1...\n");
+	img2array (&img, 1);
+
+	printf ("[INFO] ...    chrominance channel 2...\n");
+	img2array (&img, 2);
+
+	printf ("[INFO] ... end of conversion from image to array...\n\n");
 
 
 	// ----------------------------------------------------------------------
@@ -1374,14 +1487,14 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ...       chrominance channel 1...\n");
-	// if (aggregate(kind, &img, &u_list, 1) != 0) {
-	// 	return 1;
-	// }
+	if (aggregate(kind, &img, &u_list, 1) != 0) {
+		return 1;
+	}
 
 	printf ("[INFO] ...       chrominance channel 2...\n");
-	// if (aggregate(kind, &img, &v_list, 2) != 0) {
-	// 	return 1;
-	// }
+	if (aggregate(kind, &img, &v_list, 2) != 0) {
+		return 1;
+	}
 
 	printf ("[INFO] ... end of denoising...\n\n");
 	
