@@ -14,10 +14,10 @@ typedef struct block_node {
 	block_t block;										// block data
 	double distance;									// block distance to the reference block
 	struct block_node* next;
-} node_t;
+} block_node_t;
 
 // type for a group
-typedef node_t* group_t;
+typedef block_node_t* group_t;
 
 // node of a list of groups
 typedef struct group_node {

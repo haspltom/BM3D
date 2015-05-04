@@ -51,7 +51,7 @@ unsigned int list_length (list_t* list){
 
 unsigned int group_length (group_t* group){
 	unsigned int len = 0;
-	node_t* tmp = *group;
+	block_node_t* tmp = *group;
 
 	while (tmp != NULL) {
 		++len;
@@ -62,7 +62,7 @@ unsigned int group_length (group_t* group){
 }
 
 void free_group (group_t* group) {
-	node_t* tmp = *group;
+	block_node_t* tmp = *group;
 
 	while (*group != NULL) {
 		tmp = *group;
@@ -151,7 +151,7 @@ void print_block (FILE* fd, block_t const block) {
 int print_list (list_t const list, char* const path, char* const prefix) {
 	FILE* fd = 0;
 	group_node_t* tmp = list;
-	node_t* tmp_block;
+	block_node_t* tmp_block;
 	char groupname[40];
 	int count = 0;
 
@@ -362,8 +362,8 @@ int append_group (list_t* list, group_t* group) {
 }
 
 int append_block (group_t* group, block_t* block, double const distance) {
-	node_t* tmp = *group;
-	node_t* new_node;
+	block_node_t* tmp = *group;
+	block_node_t* new_node;
 	block_t tmp_block;
 	int i, j;
 
@@ -381,7 +381,7 @@ int append_block (group_t* group, block_t* block, double const distance) {
 	tmp_block.x = block->x;
 	tmp_block.y = block->y;
 	
-	new_node = (node_t*)malloc(sizeof(node_t)); //MISTAKE: allocated node_t* instead of node_t
+	new_node = (block_node_t*)malloc(sizeof(block_node_t)); //MISTAKE: allocated block_node_t* instead of block_node_t
 	new_node->block = tmp_block;
 	new_node->distance = distance;
 	new_node->next = 0;
@@ -708,7 +708,7 @@ int block_matching (char* const kind,
 // --------------------------------------------------------------------------
 int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 	group_node_t* tmp = *ylist;
-	node_t* group;
+	block_node_t* group;
 	block_t* block;
 	double w;							// weight of actual processed group
 	int x, y, bs;
@@ -782,8 +782,8 @@ int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 	return 0;
 }
 
-node_t* get_previous_block (group_t group, node_t* block) {
-	node_t* prev = group;
+block_node_t* get_previous_block (group_t group, block_node_t* block) {
+	block_node_t* prev = group;
 
 	while ((prev != NULL) && (prev->next != block)) {
 		prev = prev->next;
@@ -793,8 +793,8 @@ node_t* get_previous_block (group_t group, node_t* block) {
 }
 
 int trim_group (group_t* group, unsigned int max_blocks) {
-	node_t* tmp_block = *group;
-	node_t* prev;
+	block_node_t* tmp_block = *group;
+	block_node_t* prev;
 	unsigned int diff = group_length(group) - max_blocks;;
 	int i;
 
@@ -854,7 +854,7 @@ int trim_list (list_t* list, unsigned int const max_blocks) {
 // METHODS FOR DENOISING
 // --------------------------------------------------------------------------
 void group2array (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
-	node_t* tmp = *group;
+	block_node_t* tmp = *group;
 	int i, j, k;
 
 	while (tmp != NULL) {
@@ -870,7 +870,7 @@ void group2array (group_t* group, unsigned int len, unsigned const z, double arr
 }
 
 void array2group (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
-	node_t* tmp = *group;
+	block_node_t* tmp = *group;
 	int i, j, k;
 
 	while (tmp != NULL) {
@@ -930,8 +930,16 @@ void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double
 void wiener_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
 }
 
-// determines the weight for a given group after shrinkage
-double get_weight (int const bs, int const z, double mat[z][bs][bs]) {
+// determines the weight for a given group after shrinkage with averaging
+double get_weight_avg (group_t* group) {
+	int i, j, k;
+	int count = 0;
+
+	return (count >= 1) ? 1.0/(double)count : 1.0;
+}
+
+// determines the weight for a given group after shrinkage with hard-thresholding
+double get_weight_ht (int const bs, int const z, double mat[z][bs][bs]) {
 	int i, j, k;
 	int count = 0;
 
@@ -954,7 +962,7 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 	char path[30];
 	char ch;
 	group_node_t* tmp = *list;
-	node_t* group;
+	block_node_t* group;
 	unsigned int z;
 	double th_3d = 0.15;
 	int count = 0;
@@ -1022,10 +1030,10 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 			tmp->weight = 1.0;
 		}
 		if (!strcmp(kind, "avg")) {
-			tmp->weight = 1.0;
+			tmp->weight = get_weight_avg (&group);
 		}
 		else {
-			tmp->weight = get_weight (len, z, arr);	
+			tmp->weight = get_weight_ht (len, z, arr);	
 		}
 
 		if (!strcmp(kind, "ht")) {
@@ -1053,7 +1061,7 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 // --------------------------------------------------------------------------
 int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel) {
 	group_node_t* tmp = *list;
-	node_t* group;
+	block_node_t* group;
 	block_t* block;
 	double w;							// weight of actual processed group
 	double ebuf[img->height][img->width];
