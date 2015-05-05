@@ -71,34 +71,15 @@ void free_group (group_t* group) {
 	}
 }
 
-int img2array (png_img* img, int const channel) {
+int img2array (png_img* img, int const channel, char* const path, char* const name) {
 	FILE* fd;
-	char name[10];
-	char outfile[30];
-	int array[img->width][img->height];
+	char outfile[40];
 	int i, j;
 	png_byte* row;
 	png_byte* tmp;
 
-	// select filename
-	switch (channel) {
-		case 0:
-			sprintf (name, "y_array");
-			break;
-		case 1:
-			sprintf (name, "u_array");
-			break;
-		case 2:
-			sprintf (name, "v_array");
-			break;
-		default:
-			generate_error ("Invalid channel for array building...");
-			return 1;
-			break;
-	}
-
 	// obtain entire output filename
-	if (get_output_filename (outfile, "dns/", name, "txt", 0) != 0) {
+	if (get_output_filename (outfile, path, name, "txt", 0) != 0) {
 		generate_error ("Unable to process output filename for group...");
 		return 1;
 	}
@@ -110,21 +91,14 @@ int img2array (png_img* img, int const channel) {
 		return 1;
 	}
 
-	// extract pixel values
+	// write pixel values to the file
 	for (j=0; j<img->height; ++j) {
 		row = img->data[j];
 
 		for (i=0; i<img->width; ++i) {
 			tmp = &(row[i*3]);
 
-			array[j][i] = tmp[channel];
-		}
-	}
-
-	// write array to file
-	for (j=0; j<img->height; ++j) {
-		for (i=0; i<img->width; ++i) {
-			fprintf (fd, "%d ", array[j][i]);
+			fprintf (fd, "%d ", tmp[channel]);
 		}
 		fprintf (fd, "\n");
 	}
@@ -142,7 +116,7 @@ void print_block (FILE* fd, block_t const block) {
 
 	for (j=0; j<block.block_size; ++j) {
 		for (i=0; i<block.block_size; ++i) {
-			fprintf (fd, "%f ", block.data[i][j]);
+			fprintf (fd, "%f ", block.data[j][i]);
 		}
 		fprintf (fd, "\n");
 	}
@@ -708,14 +682,13 @@ int block_matching (char* const kind,
 // --------------------------------------------------------------------------
 // METHODS FOR INTERMEDIATE STEPS
 // --------------------------------------------------------------------------
-int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
-	group_node_t* tmp = *ylist;
+int get_chrom (png_img* img, list_t* source_list, list_t* target_list, unsigned int const channel) {
+	group_node_t* tmp = *source_list;
 	block_node_t* group;
 	block_t* block;
 	int x, y, bs;
-	double d;
-	group_t u_group = 0;				// group, which holds a set of similar blocks
-	group_t v_group = 0;				// group, which holds a set of similar blocks
+	double d, w;
+	group_t tmp_group = 0;				// group, which holds a set of similar blocks
 	block_t tmp_block;
 
 	// validate input list
@@ -740,24 +713,15 @@ int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 			y = block->y;
 			bs = block->block_size;
 			d = group->distance;
+			w = group->weight;
 
 			// obtain block data for the u-channel
-			if (get_block (img, 1, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
+			if (get_block (img, channel, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
 				return 1;
 			}
 				
 			// append block data to the regarding group
-			if (append_block (&u_group, &tmp_block, d) != 0) {
-				return 1;
-			}
-
-			// obtain block data for the v-channel
-			if (get_block (img, 2, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
-				return 1;
-			}
-				
-			// append block data to the regarding group
-			if (append_block (&v_group, &tmp_block, d) != 0) {
+			if (append_block (&tmp_group, &tmp_block, d) != 0) {
 				return 1;
 			}
 
@@ -765,16 +729,11 @@ int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 		}
 
 		// add extracted groups to regarding lists
-		if (append_group (ulist, &u_group) != 0) {
+		if (append_group (target_list, &tmp_group) != 0) {
 			return 1;
 		}
 
-		if (append_group (vlist, &v_group) != 0) {
-			return 1;
-		}
-
-		u_group = 0; //EVIL, cause same pointer
-		v_group = 0; //EVIL, cause same pointer
+		tmp_group = 0; //EVIL, cause same pointer
 		tmp = tmp->next;
 	}
 	// TODO delete dynamic memory
@@ -853,35 +812,38 @@ int trim_list (list_t* list, unsigned int const max_blocks) {
 // --------------------------------------------------------------------------
 // METHODS FOR DENOISING
 // --------------------------------------------------------------------------
+// TODO here the problem of coloring should be
 void group2array (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
 	block_node_t* tmp = *group;
-	int i, j, k;
+	int i, j;
+	int depth = 0;
 
-	while (tmp != NULL) {
-		for (k=0; k<z; ++k) {
-			for (j=0; j<len; ++j) {
-				for (i=0; i<len; ++i) {
-					arr[k][j][i] = tmp->block.data[j][i];
-				}
+	while ((tmp != NULL) && (depth < z)) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				arr[depth][j][i] = tmp->block.data[j][i];
 			}
-			tmp = tmp->next;
 		}
+
+		++depth;
+		tmp = tmp->next;
 	}
 }
 
 void array2group (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
 	block_node_t* tmp = *group;
-	int i, j, k;
+	int i, j;
+	int depth = 0;
 
-	while (tmp != NULL) {
-		for (k=0; k<z; ++k) {
-			for (j=0; j<len; ++j) {
-				for (i=0; i<len; ++i) {
-					tmp->block.data[j][i] = arr[k][j][i];
-				}
+	while ((tmp != NULL) && (depth < z)) {
+		for (j=0; j<len; ++j) {
+			for (i=0; i<len; ++i) {
+				tmp->block.data[j][i] = arr[depth][j][i];
 			}
-			tmp = tmp->next;
 		}
+
+		++depth;
+		tmp = tmp->next;
 	}
 }
 
@@ -916,7 +878,6 @@ void average_3d (int const bs, int const z, double mat[z][bs][bs]) {
 void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
 	int i, j, k;
 	double threshold = th_3d * (double)sigma * sqrt(2.0*log(bs*bs));
-	printf (">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><threshold ht: %f\n", threshold);
 	
 	for (k=0; k<z; ++k) {
 		for (j=0; j<bs; ++j) {
@@ -985,7 +946,7 @@ double get_weight_ht (int const bs, int const z, double mat[z][bs][bs]) {
 	return (count >= 1) ? 1.0/(double)count : 1.0;
 }
 
-int shrinkage (char* const kind, list_t* list, int const sigma, int const channel) {
+int shrinkage (char* const kind, list_t* list, int const sigma, double const th_3d, int const channel) {
 	FILE* fd = 0;
 	char outfile[40];
 	char path[30];
@@ -993,7 +954,6 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 	group_node_t* tmp = *list;
 	block_node_t* group;
 	unsigned int z;
-	double th_3d = 0.15;
 	int count = 0;
 
 	// obtain letter for channel
@@ -1027,7 +987,7 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 		// append extracted group to log-file
 		array2file (fd, len, z, arr, "extracted group");
 
-		// perform 3D-hard-thresholding
+		// perform actual shrinkage operation
 		if (!strcmp(kind, "avg")) {
 			average_3d (len, z, arr);
 		}
@@ -1346,18 +1306,18 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// IMAGE-TO-ARRAY CONVERSION
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... launch of conversion from image to array...\n");
+	printf ("[INFO] ... launch of printing image as three separate value arrays...\n");
 
 	printf ("[INFO] ...    luminance channel...\n");
-	img2array (&img, 0);
+	img2array (&img, 0, "img/", "y_channel_before");
 
 	printf ("[INFO] ...    chrominance channel 1...\n");
-	img2array (&img, 1);
+	img2array (&img, 1, "img/", "u_channel_before");
 
 	printf ("[INFO] ...    chrominance channel 2...\n");
-	img2array (&img, 2);
+	img2array (&img, 2, "img/", "v_channel_before");
 
-	printf ("[INFO] ... end of conversion from image to array...\n\n");
+	printf ("[INFO] ... end of printing arrays...\n\n");
 
 
 	// ----------------------------------------------------------------------
@@ -1377,10 +1337,9 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ...    number of groups in list: %d\n\n", list_length(&y_list));
 
 	// printf ("[INFO] ... chrominance channel 1...\n");
-
 	// bm_start = clock();
 
-	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 1, 0, &u_list) != 0) {
+	// if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 1, 0, &u_list) != 0) {
 	// 	return 1;
 	// }
 
@@ -1390,10 +1349,9 @@ int bm3d (char* const infile, 			// name of input file
 	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
 
 	// printf ("[INFO] ... chrominance channel 2...\n");
-
 	// bm_start = clock();
 
-	// if (block_matching("ht", &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 2, 0, &v_list) != 0) {
+	// if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 2, 0, &v_list) != 0) {
 	// 	return 1;
 	// }
 
@@ -1421,28 +1379,33 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// obtain the pixel values from the u- and v-channel of the image
-	printf ("[INFO] ... extracting blocks from chrominance channels...\n\n");
-	if (get_chrom(&img, &y_list, &u_list, &v_list)) {
-		return 1;
-	}
-
 	// trim groups to maximal number of blocks
-	printf ("[INFO] ... trimming groups to maximum size...\n");
-	printf ("[INFO] ...    luminance channel...\n");
+	printf ("[INFO] ... trimming groups to maximum size...\n\n");
+	// printf ("[INFO] ...    luminance channel...\n");
 	if (trim_list(&y_list, max_blocks) != 0) {
 		return 1;
 	}
 
+	// obtain the pixel values from the u- and v-channel of the image
+	printf ("[INFO] ... extracting blocks from chrominance channels...\n\n");
 	printf ("[INFO] ...    chrominance channel 1...\n");
-	if (trim_list(&u_list, max_blocks) != 0) {
+	if (get_chrom(&img, &y_list, &u_list, 1)) {
 		return 1;
 	}
 
-	printf ("[INFO] ...    chrominance channel 2...\n\n");
-	if (trim_list(&v_list, max_blocks) != 0) {
+	printf ("[INFO] ...    chrominance channel 2...\n");
+	if (get_chrom(&img, &y_list, &v_list, 2)) {
 		return 1;
 	}
+
+	// if (trim_list(&u_list, max_blocks) != 0) {
+	// 	return 1;
+	// }
+
+	// printf ("[INFO] ...    chrominance channel 2...\n\n");
+	// if (trim_list(&v_list, max_blocks) != 0) {
+	// 	return 1;
+	// }
 
 	sprintf (path, "grp/trm/%s/y/", kind);
 
@@ -1471,17 +1434,17 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ...    determining estimates...\n");
 
 	printf ("[INFO] ...       luminance channel...\n");
-	if (shrinkage(kind, &y_list, sigma, 0) != 0) {
+	if (shrinkage(kind, &y_list, sigma, th_3d, 0) != 0) {
 		return 1;
 	}
 
 	printf ("[INFO] ...       chrominance channel 1...\n");
-	if (shrinkage(kind, &u_list, sigma, 1) != 0) {
+	if (shrinkage(kind, &u_list, sigma, th_3d, 1) != 0) {
 		return 1;
 	}
 
 	printf ("[INFO] ...       chrominance channel 2...\n");
-	if (shrinkage(kind, &v_list, sigma, 1) != 0) {
+	if (shrinkage(kind, &v_list, sigma, th_3d, 1) != 0) {
 		return 1;
 	}
 
@@ -1525,6 +1488,24 @@ int bm3d (char* const infile, 			// name of input file
 
 	printf ("[INFO] ... end of denoising...\n\n");
 	
+
+	// ----------------------------------------------------------------------
+	// IMAGE-TO-ARRAY CONVERSION
+	// ----------------------------------------------------------------------
+	printf ("[INFO] ... launch of printing image as three separate value arrays...\n");
+
+	printf ("[INFO] ...    luminance channel...\n");
+	img2array (&img, 0, "img/", "y_channel_after");
+
+	printf ("[INFO] ...    chrominance channel 1...\n");
+	img2array (&img, 1, "img/", "u_channel_after");
+
+	printf ("[INFO] ...    chrominance channel 2...\n");
+	img2array (&img, 2, "img/", "v_channel_after");
+
+	printf ("[INFO] ... end of printing arrays...\n\n");
+
+
 	// ----------------------------------------------------------------------
 	// COLORSPACE CONVERSION & WRITEBACK
 	// ----------------------------------------------------------------------
