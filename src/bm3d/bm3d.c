@@ -172,19 +172,21 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 		}
 
 		tmp_block = tmp->group;
-		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
+		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n\n", group_length(&tmp_block));
 
-		if (strstr(path, "est") != NULL) {
-			fprintf (fd, "[INFO] ... weight of group: %f\n", tmp->weight);
-		}
-
-		fprintf (fd, "\n");
 		fprintf (fd, "[INFO] ... reference block...\n");
 
 		while (tmp_block != NULL) {
 			print_block (fd, tmp_block->block);
 			fprintf (fd, "[INFO] ... block position: (%d/%d)\n", tmp_block->block.x, tmp_block->block.y);
-			fprintf (fd, "[INFO] ... distance to reference block: %f\n\n", tmp_block->distance);
+			fprintf (fd, "[INFO] ... distance to reference block: %f\n", tmp_block->distance);
+			
+			if (strstr(path, "est") != NULL) {
+				fprintf (fd, "[INFO] ... block weight: %f\n", tmp_block->weight);
+			}
+
+			fprintf (fd, "\n");
+
 			tmp_block = tmp_block->next;
 		}
 
@@ -345,7 +347,6 @@ int append_group (list_t* list, group_t* group) {
 	
 	new_node = (group_node_t*)malloc(sizeof(group_node_t));
 	new_node->group = *group;
-	new_node->weight = 0.0;
 	new_node->next = 0;
 
 	if (tmp != NULL) {
@@ -384,6 +385,7 @@ int append_block (group_t* group, block_t* block, double const distance) {
 	new_node = (block_node_t*)malloc(sizeof(block_node_t)); //MISTAKE: allocated block_node_t* instead of block_node_t
 	new_node->block = tmp_block;
 	new_node->distance = distance;
+	new_node->weight = 0.0;
 	new_node->next = 0;
 
 	if (tmp != NULL) {
@@ -710,7 +712,6 @@ int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 	group_node_t* tmp = *ylist;
 	block_node_t* group;
 	block_t* block;
-	double w;							// weight of actual processed group
 	int x, y, bs;
 	double d;
 	group_t u_group = 0;				// group, which holds a set of similar blocks
@@ -731,7 +732,6 @@ int get_chrom (png_img* img, list_t* ylist, list_t* ulist, list_t* vlist) {
 	// go through all groups
 	while (tmp->next != NULL) {
 		group = tmp->group;
-		w = tmp->weight;
 
 		// iterate over all blocks within the actual group
 		while (group != NULL) {
@@ -916,6 +916,7 @@ void average_3d (int const bs, int const z, double mat[z][bs][bs]) {
 void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
 	int i, j, k;
 	double threshold = th_3d * (double)sigma * sqrt(2.0*log(bs*bs));
+	printf (">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><threshold ht: %f\n", threshold);
 	
 	for (k=0; k<z; ++k) {
 		for (j=0; j<bs; ++j) {
@@ -931,11 +932,39 @@ void wiener_3d (int const bs, int const z, double mat[z][bs][bs], double const t
 }
 
 // determines the weight for a given group after shrinkage with averaging
-double get_weight_avg (group_t* group) {
-	int i, j, k;
+void determine_weights (char* const kind, group_t* group) {
+	block_node_t* tmp = *group;
+	double d = 0.0;
 	int count = 0;
+	int i, j;
 
-	return (count >= 1) ? 1.0/(double)count : 1.0;
+	while (tmp != NULL) {
+
+		if (!strcmp(kind, "none")) {
+			tmp->weight = 1.0;
+		}
+		else if (!strcmp(kind, "avg")) {
+			d = tmp->distance;
+			tmp->weight = (d >= 1.0) ? 1.0/d : 1.0;
+		}
+		else if (!strcmp(kind, "ht")) {
+			for (j=0; j<tmp->block.block_size; ++j) {
+				for (i=0; i<tmp->block.block_size; ++i) {
+					if (tmp->block.data[j][i] != 0.0) {
+						++count;
+					}
+				}
+			}
+			
+			tmp->weight = (count >= 1) ? 1.0/(double)count : 1.0;
+			count = 0;
+		}
+		else if (!strcmp(kind, "wnr")) {
+			tmp->weight = 1.0;
+		}
+
+		tmp = tmp->next;
+	}
 }
 
 // determines the weight for a given group after shrinkage with hard-thresholding
@@ -1025,17 +1054,6 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 		//append thresholded group to log-file
 		array2file (fd, len, z, arr, "group after 3D-shrinkage-operation");
 
-		// calculate the weight for the actual block
-		if (!strcmp(kind, "none")) {
-			tmp->weight = 1.0;
-		}
-		if (!strcmp(kind, "avg")) {
-			tmp->weight = get_weight_avg (&group);
-		}
-		else {
-			tmp->weight = get_weight_ht (len, z, arr);	
-		}
-
 		if (!strcmp(kind, "ht")) {
 			// perform 3D-IDCT
 			idct_3d (len, z, arr);
@@ -1046,6 +1064,9 @@ int shrinkage (char* const kind, list_t* list, int const sigma, int const channe
 
 		// write array data back to a list node
 		array2group (&group, len, z, arr);
+
+		// calculate the weights for the blocks of the actual group
+		determine_weights (kind, &group);	
 
 		tmp = tmp->next;
 
@@ -1063,7 +1084,6 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	group_node_t* tmp = *list;
 	block_node_t* group;
 	block_t* block;
-	double w;							// weight of actual processed group
 	double ebuf[img->height][img->width];
 	double wbuf[img->height][img->width];
 	int estbuf[img->height][img->width];
@@ -1077,7 +1097,6 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 
 	while (tmp != NULL) {
 		group = tmp->group;
-		w = tmp->weight;
 		// if (block->x==15 && block->y==15) printf ("x,y: %d %d\n", block->x, block->y);
 		
 		while (group != NULL) {
@@ -1085,7 +1104,7 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			bs = block->block_size;
 			x = block->x - (bs/2);
 			y = block->y - (bs/2);
-			// if (x==8 && y==8) printf ("x,y: %d %d\nw: %f\n", x, y, tmp->weight);
+			// if (x==8 && y==8) printf ("x,y: %d %d\nw: %f\n", x, y, group->weight);
 
 			// iterate over current block and extract values
 			for (j=0; j<bs; ++j) {
@@ -1094,11 +1113,11 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 						// printf ("block->data: %f\n", block->data[j][i]);
 						yindex = j+y;
 						xindex = i+x;
-						ebuf[yindex][xindex] += block->data[j][i] * tmp->weight;
-						wbuf[yindex][xindex] += tmp->weight;
+						ebuf[yindex][xindex] += block->data[j][i] * group->weight;
+						wbuf[yindex][xindex] += group->weight;
 						if (xindex==174 && yindex==98) {
 							printf ("block_data: %f\n", block->data[j][i]);
-							printf ("weight: %f\n", tmp->weight);
+							printf ("weight: %f\n", group->weight);
 						}
 						// printf ("(%d,%d) ", xindex, yindex);
 						// ebuf[j][i] += block->data[j][i];
