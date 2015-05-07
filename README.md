@@ -1,7 +1,7 @@
 # BM3D
 ## C-programm for a BM3D denoising algorithm
 
-**Execution example:**
+### Execution example:
 
 The following described execution cycle is also done by the given bash script *example_cycle* and
 can directly be executed in order not to type all the steps separately.
@@ -14,7 +14,7 @@ can directly be executed in order not to type all the steps separately.
 * execute the main program by calling "bm3d"
 	* example: `./bm3d path/to/noisy/image.png path/to/params_file.txt`
 
-**Remarks:**
+### Remarks:
 
 The execution time differs very strongly by varying the parameters. When you choose *avg* as kind of
 shrinkage the cycle takes the shortest time, because then the calculation of the DCT will be
@@ -39,7 +39,7 @@ In this case, the recognized blocks for the channel *y* will be marked in images
 `img/rgb/grp/`.
 	
 
-**Known bugs:**
+### Known bugs:
 
 * Changing of colors
 	* Currently, the shrinkage and the aggregation of the chrominance channels is commented out,
@@ -48,3 +48,9 @@ In this case, the recognized blocks for the channel *y* will be marked in images
 	  of `aggregate()` is correct, no matter with which channel. So actually, it is not a problem
 	  bound to the channels *u* and *v*, but rather to function `aggregate()`.
 * Freeing all the dynamically allocated memory is still missing.
+* Unprocessed borders
+	* Due to the fact, that the recognition of the blocks is dependend from the block step, there
+	  always remain a certain border, which is not executed at all.
+* Pixel artefacts at the bottom
+	* Mostly there are some strange artefacts in the last few lines of the output image, which
+	  origins is not clarified yet.

@@ -1,4 +1,4 @@
 make
-./param_gen ht 13 11 50 25 50 50 0.321 0.101 0.3105
+./param_gen avg 13 11 50 25 50 50 0.321 0.101 0.3105
 ./noising 50 img/house.png img/rgb/
-./bm3d img/rgb/noisy_rgb_house[050].png res/params_ht-13-11-50-25-50-50.txt
+./bm3d img/rgb/noisy_rgb_house[050].png res/params_avg-13-11-50-25-50-50.txt
