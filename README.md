@@ -24,8 +24,22 @@ other hand, the quality of the output image will suffer from these speedup actio
 The block size should also be higher than the block step, so that the recognized blocks overlap.
 Otherwise, you will have areas of the image, which will not be processed at all.
 
+The shrinkage kind *none* is only for testing all steps of processing without changing the pixel
+values. So, when using *none*, the input should be equal to the output. Unfortunately, this is only
+the case to a certain degree. See issue *changing of colors* in section *known bugs*.
+
 An additional possible setting is the generation of a bunch of images with the identified groups of
 blocks marked in them. However, this has to be done in the source code directly when the function
 `block_matching()` is called. The reason for this is simply, that I haven't brought the effort so
 far to include this setting in the parameter file. To enable this block marking, just change the
 line `block_matching()` to `block_matching`.
+
+**Known bugs:**
+
+* Changing of colors
+	* Currently, the shrinkage and the aggregation of the chrominance channels is commented out,
+	  because then the colors of the output image change slightly and I simply don't know why.
+	* The source of the problem seems to be in function `aggregate()`, because always the first call
+	  of `aggregate()` is correct, no matter with which channel. So actually, it is not a problem
+	  bound to the channels *u* and *v*, but rather to function `aggregate()`.
+* Freeing all the dynamically allocated memory is still missing.
