@@ -231,4 +231,4 @@ $(OBJDIR)/main.o: $(SRCDIR)/main.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
  
 clean:
-	rm -r noising param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(GRPDIR) $(BMSDIR) $(DNSDIR)
+	rm -r noising param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(IMGDIR)/*.txt $(GRPDIR) $(BMSDIR) $(DNSDIR)
