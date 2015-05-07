@@ -356,7 +356,7 @@ int append_block (group_t* group, block_t* block, double const distance) {
 	tmp_block.x = block->x;
 	tmp_block.y = block->y;
 	
-	new_node = (block_node_t*)malloc(sizeof(block_node_t)); //MISTAKE: allocated block_node_t* instead of block_node_t
+	new_node = (block_node_t*)malloc(sizeof(block_node_t)); 
 	new_node->block = tmp_block;
 	new_node->distance = distance;
 	new_node->next = 0;
@@ -480,8 +480,6 @@ void hard_threshold_2d (int const bs, double mat[bs][bs], double const th_2d, in
 	int i, j;
 	double threshold = th_2d * (double)sigma * sqrt(2.0*log(bs*bs));
 
-	// printf ("%f\n", threshold);
-	
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
 			mat[j][i] = (abs(mat[j][i])>threshold) ? mat[j][i] : 0.0;
@@ -494,7 +492,6 @@ void subtract_blocks (int const bs, double const mat1[bs][bs], double const mat2
 
 	for (j=0; j<bs; ++j) {
 		for (i=0; i<bs; ++i) {
-			// res[i][j] = limit (mat1[i][j] - mat2[i][j]);
 			res[i][j] = mat1[i][j] - mat2[i][j];
 		}
 	}
@@ -563,11 +560,11 @@ int block_matching (char* const kind,
 	int i, j, k, l;
 	block_t ref_block;
 	block_t cmp_block;
-	double d;	// block distance
-	group_t group = 0;						// group, which holds a set of similar blocks
-	int count = 0;
-	char path[20];								// path is set according to 'ht' or 'wnr'
-	char outfile[40];							// universally used output-filename
+	double d;							// block distance
+	group_t group = 0;				// group, which holds a set of similar blocks
+	int count = 0;						// variable to add increasing numbers to the file names
+	char path[20];						// path is set according to 'ht' or 'wnr'
+	char outfile[40];					// universally used output-filename
 
 	// allocate block memory
 	if (new_block_struct(b_size, &ref_block) != 0) {
@@ -577,12 +574,6 @@ int block_matching (char* const kind,
 	if (new_block_struct(b_size, &cmp_block) != 0) {
 		return 1;
 	}
-
-				double dmin = 100.0;
-				double dmax = 0.0;
-				double dsum = 0.0;
-				int dnum = 0;
-
 
 	// compare blocks according to the sliding-window manner
 	for (j=0; j<img->height; j=j+b_step) {
@@ -595,10 +586,6 @@ int block_matching (char* const kind,
 					return 1;
 				}
 				
-				// printf ("\n");
-				// printf ("-----------------------------------------------------\n");
-				// printf ("new reference block with indices (%d/%d) obtained...\n", i, j);
-				// printf ("-----------------------------------------------------\n");
 				if (append_block (&group, &ref_block, 0.0) != 0) {
 					return 1;
 				}
@@ -620,22 +607,15 @@ int block_matching (char* const kind,
 							if (get_block (img, channel, &cmp_block, k-(b_size/2), l-(b_size/2)) != 0) {
 								return 1;
 							}
-							// printf ("(%d/%d)\n", k, l);
 
 							// compare blocks for similarity
 							d = get_block_distance (&ref_block, &cmp_block, sigma, th_2d);
-							dmin = (d < dmin) ? d : dmin;
-							dmax = (d > dmax) ? d : dmax;
-							dsum += d;
-							++dnum;
-							// if (!strcmp(kind, "ht")) printf ("distance: %f\ntaumatch: %f\n", d, tau_match*255);
 							
 							// decide whether block similarity is sufficient
 							if (d < tau_match*255) {
 								if (append_block (&group, &cmp_block, d) != 0) {
 									return 1;
 								}
-								// if (!strcmp(kind, "wnr")) printf ("block appended...\n");
 
 								if (block_marking) {
 									mark_cmp_block (tmp, &cmp_block);
@@ -653,7 +633,6 @@ int block_matching (char* const kind,
 
 				if (block_marking) {
 					// write image with marked group in it
-					// sprintf (path, "img/yuv/grp/%s/", kind);
 					sprintf (path, "img/rgb/grp/");
 
 					// set filename for noisy yuv output image
@@ -669,11 +648,10 @@ int block_matching (char* const kind,
 					}
 				}
 
-				group = 0; //EVIL, cause same pointer
+				group = 0; 
 			}
 		}
 	}
-				printf ("dmin: %f\ndmax: %f\ndavg: %f\n", dmin, dmax, dsum/((double)dnum));
 
 	return 0;
 }
@@ -731,7 +709,7 @@ int get_chrom (png_img* img, list_t* source_list, list_t* target_list, unsigned 
 			return 1;
 		}
 
-		tmp_group = 0; //EVIL, cause same pointer
+		tmp_group = 0; 
 		tmp = tmp->next;
 	}
 	// TODO delete dynamic memory
@@ -1073,40 +1051,29 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	int yindex, xindex = 0;
 	int uneven = 0;
 
-
 	while (tmp != NULL) {
 		group = tmp->group;
-		// if (block->x==15 && block->y==15) printf ("x,y: %d %d\n", block->x, block->y);
 		
 		while (group != NULL) {
 			block = &group->block;
 			bs = block->block_size;
 			x = block->x - (bs/2);
 			y = block->y - (bs/2);
-			// if (x==8 && y==8) printf ("x,y: %d %d\nw: %f\n", x, y, tmp->weight);
 
 			// iterate over current block and extract values
 			for (j=0; j<bs; ++j) {
 				for (i=0; i<bs; ++i) {
-					// if (block->x==14 && block->y==14) {
-						// printf ("block->data: %f\n", block->data[j][i]);
-						yindex = j+y;
-						xindex = i+x;
-						ebuf[yindex][xindex] += block->data[j][i] * tmp->weight;
-						wbuf[yindex][xindex] += tmp->weight;
-						if (xindex==174 && yindex==98) {
-							printf ("block_data: %f\n", block->data[j][i]);
-							printf ("weight: %f\n", tmp->weight);
-						}
-						// printf ("(%d,%d) ", xindex, yindex);
-						// ebuf[j][i] += block->data[j][i];
-						// printf ("ebuf: %f\n", ebuf[j][i]);
-					// }
+					yindex = j+y;
+					xindex = i+x;
+					ebuf[yindex][xindex] += block->data[j][i] * tmp->weight;
+					wbuf[yindex][xindex] += tmp->weight;
+
+					if (xindex==174 && yindex==98) {
+						printf ("block_data: %f\n", block->data[j][i]);
+						printf ("weight: %f\n", tmp->weight);
+					}
 				}
-				// if (block->x==15 && block->y==15) printf ("\n");
 			}
-			// if (block->x==15 && block->y==15) printf ("\n");
-			// printf ("\n");
 
 			group = group->next;
 		}
@@ -1136,41 +1103,25 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 		return 1;
 	}	
 
-	int maxest = 0;
-	int minest = 255;
-
 	// determine estimates by dividing ebuf with wbuf
 	for (j=0; j<img->height; ++j) {
 		for (i=0; i<img->width; ++i) {
 			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
 				estbuf[j][i] = (int)(ebuf[j][i] / wbuf[j][i]);
+
+				// probably the reason for the artefacts at the bottom
 				if (estbuf[j][i] < 0) {
 					printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
 					printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
 				}
-				// printf ("estbuf[%d][%d]: %d\n", j, i, estbuf[j][i]);
-				maxest = (estbuf[j][i] > maxest) ? estbuf[j][i] : maxest;
-				minest = (estbuf[j][i] < minest) ? estbuf[j][i] : minest;
 			}
 		}
 	}
-
-	printf ("max est: %d\n", maxest);
-	printf ("min est: %d\n", minest);
 
 	// write buffer with local estimates to file
 	if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
 		return 1;
 	}	
-
-	// printf ("\n-------POINTERS-------\n");
-	// printf ("list:  %p\n", list);
-	// printf ("tmp:   %p\n", tmp);
-	// printf ("group: %p\n", group);
-	// printf ("block: %p\n", block);
-	// printf ("row:   %p\n", row);
-	// printf ("pix:   %p\n", pix);
-	// printf ("-------POINTERS-------\n\n");
 
 	// write local estimates back to image
 	for (j=0; j<img->height; ++j) {
@@ -1194,55 +1145,6 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	return 0;
 }
 
-//					// Wiener Stuff -----------------------------------------------
-//					int mean_2d(unsigned int const bs, block_t* block, double res[bs], unsigned int const dim) {
-//						double sum = 0.0;
-//						int i, j;
-//					
-//						// check dimension parameter
-//						if (!((dim==1) || (dim==2))) {
-//							generate_error ("Wrong dimension for mean calculation...");
-//							return 1;
-//						}
-//					
-//						for (j=0; j<bs; ++j) {
-//							for (i=0; i<bs; ++i) {
-//								sum += (dim==1) ? block->data[i][j] : block->data[j][i];
-//							}
-//							res[j] = sum / (double)bs;
-//							sum = 0.0;
-//						}
-//					
-//						return 0;
-//					}
-//					
-//					int subtract_mean (unsigned int const bs, block_t* block, double res[bs][bs], unsigned int const dim) {
-//						int i, j;
-//						double mean[bs];
-//					
-//						// obtain mean values
-//						if (mean_2d(bs, block, mean, dim) != 0) {
-//							return 1;
-//						}
-//					
-//						for (j=0; j<bs; ++j) {
-//							for (i=0; i<bs; ++i) {
-//								if (dim == 1) {
-//									res[i][j] = limit (block->data[i][j] - mean[j]);
-//								}
-//								else if (dim == 2) {
-//									res[j][i] = limit (block->data[j][i] - mean[j]);
-//								}
-//								else {
-//									generate_error ("Wrong dimension for mean calculation...");
-//									return 1;
-//								}
-//							}
-//						}
-//					
-//						return 0;
-//					}
-
 int bm3d (char* const infile, 			// name of input file
 			 char* const kind, 				// kind of shrinkage (ht, wnr, avg)
 			 int const block_size, 			// size of internal processed blocks
@@ -1252,17 +1154,16 @@ int bm3d (char* const infile, 			// name of input file
 			 int const h_search,				// horizontal width of search window
 			 int const v_search, 			// vertical width of search window
 			 double const th_2d,				// threshold for the 2D transformation
-			 double const tau_match, 			// match value for block-matching
+			 double const tau_match, 		// match value for block-matching
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
 	png_img tmp;								// temporary image for marking the blocks
-	// png_img est;								// estimate-image after hard-thresholding
 	char outfile[40];							// universally used output-filename
-	char path[30];
-	char prefix[20];
-	list_t y_list = 0;					// list of groups	of the y-channel
-	list_t u_list = 0;					// list of groups of the u-channel
-	list_t v_list = 0;					// list of groups of the v-channel
+	char path[30];								// universally used path-name
+	char prefix[20];							// universally used prefix-name
+	list_t y_list = 0;						// list of groups	of the y-channel
+	list_t u_list = 0;						// list of groups of the u-channel
+	list_t v_list = 0;						// list of groups of the v-channel
 	clock_t bm_start, bm_end;				// time variables for block matching start and end
 	double time;
 
@@ -1355,7 +1256,6 @@ int bm3d (char* const infile, 			// name of input file
 	// BLOCK-MATCHING
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of block-matching...\n");
-	printf ("[INFO] ...    luminance channel...\n");
 	bm_start = clock();
 
 	if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 0, &y_list) != 0) {
@@ -1365,35 +1265,11 @@ int bm3d (char* const infile, 			// name of input file
 	bm_end = clock();
 	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
 	printf ("[INFO] ...    elapsed time: %f\n", time);
-	printf ("[INFO] ...    number of groups in list: %d\n\n", list_length(&y_list));
-
-	// printf ("[INFO] ... chrominance channel 1...\n");
-	// bm_start = clock();
-
-	// if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 1, 0, &u_list) != 0) {
-	// 	return 1;
-	// }
-
-	// bm_end = clock();
-	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	// printf ("[INFO] ... elapsed time: %f\n", time);
-	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&u_list));
-
-	// printf ("[INFO] ... chrominance channel 2...\n");
-	// bm_start = clock();
-
-	// if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 2, 0, &v_list) != 0) {
-	// 	return 1;
-	// }
-
-	// bm_end = clock();
-	// time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	// printf ("[INFO] ... elapsed time: %f\n", time);
-	// printf ("[INFO] ... number of groups in list: %d\n\n", list_length(&v_list));
+	printf ("[INFO] ...    number of groups in list: %d\n", list_length(&y_list));
 	printf ("[INFO] ... end of block-matching...\n\n");
 
+	// print recognized groups to file
 	sprintf (path, "grp/org/%s/y/", kind);
-
 	if (print_list(y_list, path, "group") != 0) {
 		return 1;
 	}
@@ -1412,7 +1288,6 @@ int bm3d (char* const infile, 			// name of input file
 
 	// trim groups to maximal number of blocks
 	printf ("[INFO] ... trimming groups to maximum size...\n\n");
-	// printf ("[INFO] ...    luminance channel...\n");
 	if (trim_list(&y_list, max_blocks) != 0) {
 		return 1;
 	}
@@ -1429,15 +1304,7 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// if (trim_list(&u_list, max_blocks) != 0) {
-	// 	return 1;
-	// }
-
-	// printf ("[INFO] ...    chrominance channel 2...\n\n");
-	// if (trim_list(&v_list, max_blocks) != 0) {
-	// 	return 1;
-	// }
-
+	// print trimmed groups to file
 	sprintf (path, "grp/trm/%s/y/", kind);
 
 	if (print_list(y_list, path, "group") != 0) {
