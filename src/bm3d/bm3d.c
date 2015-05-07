@@ -654,7 +654,7 @@ int block_matching (char* const kind,
 				if (block_marking) {
 					// write image with marked group in it
 					// sprintf (path, "img/yuv/grp/%s/", kind);
-					sprintf (path, "img/yuv/grp/");
+					sprintf (path, "img/rgb/grp/");
 
 					// set filename for noisy yuv output image
 					if (get_output_filename (outfile, path, "group", "png", ++count) != 0) {

@@ -32,7 +32,12 @@ An additional possible setting is the generation of a bunch of images with the i
 blocks marked in them. However, this has to be done in the source code directly when the function
 `block_matching()` is called. The reason for this is simply, that I haven't brought the effort so
 far to include this setting in the parameter file. To enable this block marking, just change the
-line `block_matching()` to `block_matching`.
+function call in line src/bm3d/bm3d.c:1361 from `block_matching(kind, &img, 0, block_size,
+block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 0, &y_list)` to `block_matching(kind,
+&img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list)`.
+In this case, the recognized blocks for the channel *y* will be marked in images and stored into
+`img/rgb/grp/`.
+	
 
 **Known bugs:**
 
