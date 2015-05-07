@@ -56,3 +56,9 @@ In this case, the recognized blocks for the channel *y* will be marked in images
 	  origins are not clarified yet.
 * Nearly no validation of the input parameters so far
 	* When there is a faulty parameter, which can not be handled the program probably crashes.
+
+### Parameters:
+**Kinds of shrinkage:** none, avg, ht, wnr
+**Sigma:** from 0 to 255
+**Most demonstrative block sizes:** 7, 9, 11, 13
+**Most demonstrative block steps:** 5, 7, 9, 11
