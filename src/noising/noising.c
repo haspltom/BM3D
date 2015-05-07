@@ -32,7 +32,7 @@ int exclude_extension (char* const str, char* name) {
 	return (count == 0) ? 1 : 0;
 }
 
-int image_noise (char* const infile, int const std_dev) {
+int image_noise (char* const infile, char* const output_path, int const std_dev) {
 	png_img img;
 	int i, j;
 	png_byte* row;
@@ -77,7 +77,7 @@ int image_noise (char* const infile, int const std_dev) {
 			// g = limit (y - 0.3441*u - 0.7141*v);
 			// b = limit (y + 1.772*u);
 
-			// add AWGN
+			// add noise
 			if (std_dev != 0) {
 				tmp[0] = limit (tmp[0] + (rand() % (2*std_dev)) - std_dev);
 				tmp[1] = limit (tmp[1] + (rand() % (2*std_dev)) - std_dev);
@@ -94,7 +94,7 @@ int image_noise (char* const infile, int const std_dev) {
 	sprintf (prefix, "noisy_rgb_%s", pure_name);
 
 	// set output filename
-	if (get_output_filename (outfile, "img/rgb/", prefix, "png", std_dev) != 0) {
+	if (get_output_filename (outfile, output_path, prefix, "png", std_dev) != 0) {
 		generate_error ("Unable to process output filename...");
 		return 1;
 	}
@@ -112,14 +112,14 @@ int main (int argc, char **argv) {
 	char* err_prefix = "[ERROR] ... ";
 
 	// check arguments
-	if (argc < 3) {
+	if (argc < 4) {
 		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
 		printf ("Usage:\n");
-		printf ("noising <standard deviation> <filename>\n");
+		printf ("noising <standard deviation> <filename> <output path>\n");
 		return 1;
 	}
 
-	if (image_noise(argv[2], atoi(argv[1])) != 0) {
+	if (image_noise(argv[2], argv[3], atoi(argv[1])) != 0) {
 		printf ("%s%s\n", err_prefix, ptr);
 		// free (ptr); //TODO
 		return 1;
