@@ -146,7 +146,13 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 		}
 
 		tmp_block = tmp->group;
-		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n\n", group_length(&tmp_block));
+		fprintf (fd, "[INFO] ... nr of blocks in group: %d\n", group_length(&tmp_block));
+
+		if (strstr(path, "est") != NULL) {
+			fprintf (fd, "[INFO] ... group weight: %f\n", tmp->weight);
+		}
+
+		fprintf (fd, "\n");
 
 		fprintf (fd, "[INFO] ... reference block...\n");
 
@@ -155,12 +161,6 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 			fprintf (fd, "[INFO] ... block position: (%d/%d)\n", tmp_block->block.x, tmp_block->block.y);
 			fprintf (fd, "[INFO] ... distance to reference block: %f\n", tmp_block->distance);
 			
-			if (strstr(path, "est") != NULL) {
-				fprintf (fd, "[INFO] ... block weight: %f\n", tmp_block->weight);
-			}
-
-			fprintf (fd, "\n");
-
 			tmp_block = tmp_block->next;
 		}
 
@@ -243,9 +243,9 @@ int i_buf2file (unsigned int const width, unsigned int const height, int const b
 		return 1;
 	}
 
-	fprintf (fd, "[INFO] ... .............................................\n");
-	fprintf (fd, "[INFO] ... %s\n", prefix);
-	fprintf (fd, "[INFO] ... .............................................\n\n");
+	// fprintf (fd, "[INFO] ... .............................................\n");
+	// fprintf (fd, "[INFO] ... %s\n", prefix);
+	// fprintf (fd, "[INFO] ... .............................................\n\n");
 
 	for (j=0; j<height; ++j) {
 		for (i=0; i<width; ++i) {
@@ -359,7 +359,6 @@ int append_block (group_t* group, block_t* block, double const distance) {
 	new_node = (block_node_t*)malloc(sizeof(block_node_t)); //MISTAKE: allocated block_node_t* instead of block_node_t
 	new_node->block = tmp_block;
 	new_node->distance = distance;
-	new_node->weight = 0.0;
 	new_node->next = 0;
 
 	if (tmp != NULL) {
@@ -687,7 +686,7 @@ int get_chrom (png_img* img, list_t* source_list, list_t* target_list, unsigned 
 	block_node_t* group;
 	block_t* block;
 	int x, y, bs;
-	double d, w;
+	double d;
 	group_t tmp_group = 0;				// group, which holds a set of similar blocks
 	block_t tmp_block;
 
@@ -703,7 +702,7 @@ int get_chrom (png_img* img, list_t* source_list, list_t* target_list, unsigned 
 	}
 
 	// go through all groups
-	while (tmp->next != NULL) {
+	while (tmp != NULL) {
 		group = tmp->group;
 
 		// iterate over all blocks within the actual group
@@ -713,7 +712,6 @@ int get_chrom (png_img* img, list_t* source_list, list_t* target_list, unsigned 
 			y = block->y;
 			bs = block->block_size;
 			d = group->distance;
-			w = group->weight;
 
 			// obtain block data for the u-channel
 			if (get_block (img, channel, &tmp_block, x-(bs/2), y-(bs/2)) != 0) {
@@ -812,7 +810,6 @@ int trim_list (list_t* list, unsigned int const max_blocks) {
 // --------------------------------------------------------------------------
 // METHODS FOR DENOISING
 // --------------------------------------------------------------------------
-// TODO here the problem of coloring should be
 void group2array (group_t* group, unsigned int len, unsigned const z, double arr[z][len][len]) {
 	block_node_t* tmp = *group;
 	int i, j;
@@ -847,7 +844,7 @@ void array2group (group_t* group, unsigned int len, unsigned const z, double arr
 	}
 }
 
-// shrinkage function for averaging TODO
+// shrinkage function for averaging
 void average_3d (int const bs, int const z, double mat[z][bs][bs]) {
 	int i, j, k;
 	double avg[bs][bs];
@@ -882,50 +879,67 @@ void hard_threshold_3d (int const bs, int const z, double mat[z][bs][bs], double
 	for (k=0; k<z; ++k) {
 		for (j=0; j<bs; ++j) {
 			for (i=0; i<bs; ++i) {
-				mat[k][j][i] = (abs(mat[k][j][i])>threshold) ? mat[k][j][i] : 0.0;
+				mat[k][j][i] = (fabs(mat[k][j][i])>threshold) ? mat[k][j][i] : 0.0;
 			}
 		}
 	}
 }
 
-// shrinkage function for averaging TODO
-void wiener_3d (int const bs, int const z, double mat[z][bs][bs], double const th_3d, int const sigma) {
+// shrinkage function for wiener filtering
+void wiener_3d (int const bs, int const z, double mat[z][bs][bs], int const sigma) {
+	int i, j, k;
+	double coeffs[z][bs][bs];
+	
+	for (k=0; k<z; ++k) {
+		for (j=0; j<bs; ++j) {
+			for (i=0; i<bs; ++i) {
+				coeffs[k][j][i] = pow(fabs(mat[k][j][i]),2) / (pow(fabs(mat[k][j][i]),2) + pow(sigma,2));
+				mat[k][j][i] *= coeffs[k][j][i];
+			}
+		}
+	}
 }
 
 // determines the weight for a given group after shrinkage with averaging
-void determine_weights (char* const kind, group_t* group) {
-	block_node_t* tmp = *group;
-	double d = 0.0;
+double get_weight (char* const kind, int const bs, int const z, double mat[z][bs][bs]) {
+	int i, j, k;
 	int count = 0;
-	int i, j;
+	double sum = 0.0;
+	double weight = 0.0;
 
-	while (tmp != NULL) {
-
-		if (!strcmp(kind, "none")) {
-			tmp->weight = 1.0;
-		}
-		else if (!strcmp(kind, "avg")) {
-			d = tmp->distance;
-			tmp->weight = (d >= 1.0) ? 1.0/d : 1.0;
-		}
-		else if (!strcmp(kind, "ht")) {
-			for (j=0; j<tmp->block.block_size; ++j) {
-				for (i=0; i<tmp->block.block_size; ++i) {
-					if (tmp->block.data[j][i] != 0.0) {
+	if (!strcmp(kind, "none") || !strcmp(kind, "avg")) {
+		weight = 1.0;
+	}
+	else if (!strcmp(kind, "ht")) {
+		for (k=0; k<z; ++k) {
+			for (j=0; j<bs; ++j) {
+				for (i=0; i<bs; ++i) {
+					if (mat[k][j][i] != 0.0) {
 						++count;
 					}
 				}
 			}
-			
-			tmp->weight = (count >= 1) ? 1.0/(double)count : 1.0;
-			count = 0;
 		}
-		else if (!strcmp(kind, "wnr")) {
-			tmp->weight = 1.0;
-		}
-
-		tmp = tmp->next;
+		
+		weight = (count >= 1) ? 1.0/(double)count : 1.0;
+		count = 0;
 	}
+	else if (!strcmp(kind, "wnr")) {
+		for (k=0; k<z; ++k) {
+			for (j=0; j<bs; ++j) {
+				for (i=0; i<bs; ++i) {
+					sum += pow (fabs(mat[k][j][i]), 2);
+				}
+			}
+		}
+		
+		weight = 1.0 / sum;
+	}
+	else {
+		weight = 0.0;
+	}
+
+	return weight;
 }
 
 // determines the weight for a given group after shrinkage with hard-thresholding
@@ -987,21 +1001,24 @@ int shrinkage (char* const kind, list_t* list, int const sigma, double const th_
 		// append extracted group to log-file
 		array2file (fd, len, z, arr, "extracted group");
 
-		// perform actual shrinkage operation
-		if (!strcmp(kind, "avg")) {
-			average_3d (len, z, arr);
-		}
-		else if (!strcmp(kind, "ht")) {
+		// perform 3D transformation if necessary
+		if (!strcmp(kind, "ht") || !strcmp(kind, "wnr")) {
 			// perform 3D-DCT
 			dct_3d (len, z, arr);
 
 			// append transformed group to log-file
 			array2file (fd, len, z, arr, "group after 3D-DCT transformation");
+		}
 
+		// perform actual shrinkage operation
+		if (!strcmp(kind, "avg")) {
+			average_3d (len, z, arr);
+		}
+		else if (!strcmp(kind, "ht")) {
 			hard_threshold_3d (len, z, arr, th_3d, sigma);
 		}
 		else if (!strcmp(kind, "wnr")) {
-			wiener_3d (len, z, arr, th_3d, sigma);
+			wiener_3d (len, z, arr, sigma);
 		}
 		else if (!strcmp(kind, "none")) {
 			// do nothing
@@ -1011,10 +1028,11 @@ int shrinkage (char* const kind, list_t* list, int const sigma, double const th_
 			return 1;
 		}
 
-		//append thresholded group to log-file
+		// append thresholded group to log-file
 		array2file (fd, len, z, arr, "group after 3D-shrinkage-operation");
 
-		if (!strcmp(kind, "ht")) {
+		// transform back 
+		if (!strcmp(kind, "ht") || !strcmp(kind, "wnr")) {
 			// perform 3D-IDCT
 			idct_3d (len, z, arr);
 
@@ -1026,7 +1044,7 @@ int shrinkage (char* const kind, list_t* list, int const sigma, double const th_
 		array2group (&group, len, z, arr);
 
 		// calculate the weights for the blocks of the actual group
-		determine_weights (kind, &group);	
+		tmp->weight = get_weight (kind, len, z, arr);	
 
 		tmp = tmp->next;
 
@@ -1042,17 +1060,18 @@ int shrinkage (char* const kind, list_t* list, int const sigma, double const th_
 // --------------------------------------------------------------------------
 int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel) {
 	group_node_t* tmp = *list;
-	block_node_t* group;
-	block_t* block;
+	block_node_t* group = 0;
+	block_t* block = 0;
 	double ebuf[img->height][img->width];
 	double wbuf[img->height][img->width];
 	int estbuf[img->height][img->width];
 	int i, j;
 	int x, y, bs;
-	png_byte* row;
-	png_byte* pix;
+	png_byte* row = 0;
+	png_byte* pix = 0;
 	char path[20];
 	int yindex, xindex = 0;
+	int uneven = 0;
 
 
 	while (tmp != NULL) {
@@ -1064,7 +1083,7 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			bs = block->block_size;
 			x = block->x - (bs/2);
 			y = block->y - (bs/2);
-			// if (x==8 && y==8) printf ("x,y: %d %d\nw: %f\n", x, y, group->weight);
+			// if (x==8 && y==8) printf ("x,y: %d %d\nw: %f\n", x, y, tmp->weight);
 
 			// iterate over current block and extract values
 			for (j=0; j<bs; ++j) {
@@ -1073,11 +1092,11 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 						// printf ("block->data: %f\n", block->data[j][i]);
 						yindex = j+y;
 						xindex = i+x;
-						ebuf[yindex][xindex] += block->data[j][i] * group->weight;
-						wbuf[yindex][xindex] += group->weight;
+						ebuf[yindex][xindex] += block->data[j][i] * tmp->weight;
+						wbuf[yindex][xindex] += tmp->weight;
 						if (xindex==174 && yindex==98) {
 							printf ("block_data: %f\n", block->data[j][i]);
-							printf ("weight: %f\n", group->weight);
+							printf ("weight: %f\n", tmp->weight);
 						}
 						// printf ("(%d,%d) ", xindex, yindex);
 						// ebuf[j][i] += block->data[j][i];
@@ -1124,7 +1143,7 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 	for (j=0; j<img->height; ++j) {
 		for (i=0; i<img->width; ++i) {
 			if ((ebuf[j][i] != 0.0) && (wbuf[j][i] != 0.0)) {
-				estbuf[j][i] = ebuf[j][i] / wbuf[j][i];
+				estbuf[j][i] = (int)(ebuf[j][i] / wbuf[j][i]);
 				if (estbuf[j][i] < 0) {
 					printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
 					printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
@@ -1144,6 +1163,15 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 		return 1;
 	}	
 
+	// printf ("\n-------POINTERS-------\n");
+	// printf ("list:  %p\n", list);
+	// printf ("tmp:   %p\n", tmp);
+	// printf ("group: %p\n", group);
+	// printf ("block: %p\n", block);
+	// printf ("row:   %p\n", row);
+	// printf ("pix:   %p\n", pix);
+	// printf ("-------POINTERS-------\n\n");
+
 	// write local estimates back to image
 	for (j=0; j<img->height; ++j) {
 		row = img->data[j];
@@ -1153,12 +1181,15 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			if (estbuf[j][i] != 0) {
 				// printf ("org: %d   est: %d\n", pix[channel], estbuf[j][i]);
 				// printf ("pixel position: %d/%d\n", i, j);
+				if (pix[channel] != estbuf[j][i]) ++uneven;
 				pix[channel] = estbuf[j][i];
+			
 				// pix[channel] = pix[channel];
 			}
 			// pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
 		}
 	}
+	printf ("Number of uneven pixels: %d\n", uneven);
 	
 	return 0;
 }
@@ -1327,7 +1358,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ...    luminance channel...\n");
 	bm_start = clock();
 
-	if (block_matching(kind, &img, &tmp, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list) != 0) {
+	if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 0, &y_list) != 0) {
 		return 1;
 	}
 
@@ -1438,15 +1469,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	printf ("[INFO] ...       chrominance channel 1...\n");
-	if (shrinkage(kind, &u_list, sigma, th_3d, 1) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ...       chrominance channel 1...\n");
+	// if (shrinkage(kind, &u_list, sigma, th_3d, 1) != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ...       chrominance channel 2...\n");
-	if (shrinkage(kind, &v_list, sigma, th_3d, 1) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ...       chrominance channel 2...\n");
+	// if (shrinkage(kind, &v_list, sigma, th_3d, 1) != 0) {
+	// 	return 1;
+	// }
 
 	sprintf (path, "grp/est/%s/y/", kind);
 
@@ -1476,15 +1507,15 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	printf ("[INFO] ...       chrominance channel 1...\n");
-	if (aggregate(kind, &img, &u_list, 1) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ...       chrominance channel 1...\n");
+	// if (aggregate(kind, &img, &u_list, 1) != 0) {
+	// 	return 1;
+	// }
 
-	printf ("[INFO] ...       chrominance channel 2...\n");
-	if (aggregate(kind, &img, &v_list, 2) != 0) {
-		return 1;
-	}
+	// printf ("[INFO] ...       chrominance channel 2...\n");
+	// if (aggregate(kind, &img, &v_list, 2) != 0) {
+	// 	return 1;
+	// }
 
 	printf ("[INFO] ... end of denoising...\n\n");
 	

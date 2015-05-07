@@ -13,7 +13,6 @@ typedef struct block {
 typedef struct block_node {
 	block_t block;										// block data
 	double distance;									// block distance to the reference block
-	double weight;										// weight for local estimates after shrinkage
 	struct block_node* next;
 } block_node_t;
 
@@ -23,6 +22,7 @@ typedef block_node_t* group_t;
 // node of a list of groups
 typedef struct group_node {
 	group_t group;										// list of blocks for one reference block
+	double weight;										// weight for local estimates after shrinkage
 	struct group_node* next;
 } group_node_t;
 
