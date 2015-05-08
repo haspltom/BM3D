@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../error/error.h"
+#include "../utils/utils.h"
 #include "png_io.h"
 
 void png_copy_values (png_img* target, png_img* source) {
@@ -113,13 +114,20 @@ int png_read (png_img* img, char* const filename) {
 	return 0;
 }
 
-int png_write (png_img* const img, char* const filename) {
+int png_write (png_img* const img, char* const path, char* const prefix, int const attr) {
 	FILE* fd;
 	png_structp png;						// pointer to png-file
 	png_infop png_info;					// pointer to png-information
+	char outfile[40];						// output-filename
+
+	// set filename according to path and prefix information
+	if (get_output_filename (outfile, path, prefix, "png", attr) != 0) {
+		generate_error ("Unable to process output filename...");
+		return 1;
+	}
 
 	// open file for writing
-	fd = fopen (filename, "wb");
+	fd = fopen (outfile, "wb");
 	if (fd == NULL) {
 		generate_error ("Unable to open file for writing...");
 		return 1;
@@ -198,7 +206,7 @@ int png_write (png_img* const img, char* const filename) {
 		return 1;
 	}
 
-	printf ("[INFO] ... File \"%s\" written successfully...\n", filename);
+	printf ("[INFO] ... File \"%s\" written successfully...\n", outfile);
 
 	return 0;
 }

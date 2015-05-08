@@ -18,7 +18,7 @@ typedef struct png_img_struct {
 
 extern void png_copy_values (png_img* target, png_img* sourc);
 extern int png_read (png_img* img, char* const filename);
-extern int png_write (png_img* const img, char* const filename);
+extern int png_write (png_img* const img, char* const path, char* const prefix, int const attr);
 extern void png_free_mem (png_img* img);
 
 #endif // PNG_IO_H

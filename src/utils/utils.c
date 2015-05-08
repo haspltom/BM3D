@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "utils.h"
+#include "../error/error.h"
 
 //------------ METHODS FOR COLORSPACE CONVERSION ------------
 // function that make the coversion from RGB to YUV
@@ -195,6 +196,31 @@ void idct_3d (int const len, int const z, double arr[z][len][len]) {
 // limits a given value to 255
 int limit (int const x) {
 	return (x < 0) ? 0 : (x > 255) ? 255 : x;
+}
+
+// removes the extension from a given filename
+int exclude_extension (char* const str, char* name) {
+	int count = 0;
+	char tmp[30];
+	char* iter = strrchr (str, '/');
+
+	if (!iter) {
+		generate_error ("Invalid input filename...");
+		return 1;
+	}
+
+	++iter; 		// in order to exclude the '/' itself as well
+
+	while (iter && (*iter != '.')) {
+		tmp[count] = *iter;
+		++iter;
+		++count;
+	}
+
+	tmp[count] = '\0';
+	count = sprintf (name, "%s", tmp);
+
+	return (count == 0) ? 1 : 0;
 }
 
 // produces an output filename from given string literals

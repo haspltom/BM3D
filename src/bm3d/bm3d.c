@@ -563,8 +563,6 @@ int block_matching (char* const kind,
 	double d;							// block distance
 	group_t group = 0;				// group, which holds a set of similar blocks
 	int count = 0;						// variable to add increasing numbers to the file names
-	char path[20];						// path is set according to 'ht' or 'wnr'
-	char outfile[40];					// universally used output-filename
 
 	// allocate block memory
 	if (new_block_struct(b_size, &ref_block) != 0) {
@@ -631,19 +629,10 @@ int block_matching (char* const kind,
 					return 1;
 				}
 
+				// write output image with marked group in it
 				if (block_marking) {
-					// write image with marked group in it
-					sprintf (path, "img/rgb/grp/");
-
-					// set filename for noisy yuv output image
-					if (get_output_filename (outfile, path, "group", "png", ++count) != 0) {
-						generate_error ("Unable to process output filename...");
-						return 1;
-					}
-
-					// write output image
 					yuv2rgb(tmp);
-					if (png_write(tmp, outfile) != 0) {
+					if (png_write(tmp, "img/rgb/grp", "group", ++count) != 0) {
 						return 1;
 					}
 				}
@@ -1222,14 +1211,8 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... launch of color conversion...\n");
 	rgb2yuv (&img);
 
-	// set filename for noisy yuv output image
-	if (get_output_filename (outfile, "img/yuv/", "noisy_yuv", "png", sigma) != 0) {
-		generate_error ("Unable to process output filename...");
-		return 1;
-	}
-
 	// write output image
-	if (png_write(&img, outfile) != 0) {
+	if (png_write(&img, "img/yuv/", "noisy_yuv", 0) != 0) {
 		return 1;
 	}
 
@@ -1413,14 +1396,8 @@ int bm3d (char* const infile, 			// name of input file
 
 	sprintf (prefix, "denoised_rgb_%s", kind);
 
-	// set filename for denoised rgb output image
-	if (get_output_filename (outfile, "img/rgb/", prefix, "png", sigma) != 0) {
-		generate_error ("Unable to process output filename...");
-		return 1;
-	}
-
 	// write output image
-	if (png_write(&img, outfile) != 0) {
+	if (png_write(&img, "img/rgb/", prefix, 0) != 0) {
 		return 1;
 	}
 

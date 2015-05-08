@@ -8,36 +8,11 @@
 #include "../utils/utils.h"
 #include "noising.h"
 
-int exclude_extension (char* const str, char* name) {
-	int count = 0;
-	char tmp[30];
-	char* iter = strrchr (str, '/');
-
-	if (!iter) {
-		generate_error ("Invalid input filename...");
-		return 1;
-	}
-
-	++iter; 		// in order to exclude the '/' itself as well
-
-	while (iter && (*iter != '.')) {
-		tmp[count] = *iter;
-		++iter;
-		++count;
-	}
-
-	tmp[count] = '\0';
-	count = sprintf (name, "%s", tmp);
-
-	return (count == 0) ? 1 : 0;
-}
-
-int image_noise (char* const infile, char* const output_path, int const std_dev) {
+int image_noise (char* const infile, char* const output_path, int const sigma) {
 	png_img img;
 	int i, j;
 	png_byte* row;
 	png_byte* tmp;
-	char outfile[40];
 	char pure_name[30];
 	char prefix[40];
 	
@@ -59,7 +34,7 @@ int image_noise (char* const infile, char* const output_path, int const std_dev)
 	}
 
 	// check standard deviation
-	if ((std_dev<0) || (std_dev>255)) {
+	if ((sigma<0) || (sigma>255)) {
 		generate_error ("Standard Deviation must be between 0 and 255...");
 		return 1;
 	}
@@ -78,10 +53,10 @@ int image_noise (char* const infile, char* const output_path, int const std_dev)
 			// b = limit (y + 1.772*u);
 
 			// add noise
-			if (std_dev != 0) {
-				tmp[0] = limit (tmp[0] + (rand() % (2*std_dev)) - std_dev);
-				tmp[1] = limit (tmp[1] + (rand() % (2*std_dev)) - std_dev);
-				tmp[2] = limit (tmp[2] + (rand() % (2*std_dev)) - std_dev);
+			if (sigma != 0) {
+				tmp[0] = limit (tmp[0] + (rand() % (2*sigma)) - sigma);
+				tmp[1] = limit (tmp[1] + (rand() % (2*sigma)) - sigma);
+				tmp[2] = limit (tmp[2] + (rand() % (2*sigma)) - sigma);
 			}
 		}
 	}
@@ -93,14 +68,8 @@ int image_noise (char* const infile, char* const output_path, int const std_dev)
 
 	sprintf (prefix, "noisy_rgb_%s", pure_name);
 
-	// set output filename
-	if (get_output_filename (outfile, output_path, prefix, "png", std_dev) != 0) {
-		generate_error ("Unable to process output filename...");
-		return 1;
-	}
-
 	// write output image
-	if (png_write(&img, outfile) != 0) {
+	if (png_write(&img, output_path, prefix, sigma) != 0) {
 		return 1;
 	}
 
