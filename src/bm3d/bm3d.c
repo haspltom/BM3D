@@ -1150,6 +1150,7 @@ int bm3d (char* const infile, 			// name of input file
 	char outfile[40];							// universally used output-filename
 	char path[30];								// universally used path-name
 	char prefix[20];							// universally used prefix-name
+	char pure_name[30];
 	list_t y_list = 0;						// list of groups	of the y-channel
 	list_t u_list = 0;						// list of groups of the u-channel
 	list_t v_list = 0;						// list of groups of the v-channel
@@ -1393,8 +1394,12 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... launch of color conversion...\n");
 	yuv2rgb (&img);
 
+	// obtain filename without path and extension
+	if (exclude_extension(infile, pure_name) != 0) {
+		return 1;
+	}
 
-	sprintf (prefix, "denoised_rgb_%s", kind);
+	sprintf (prefix, "denoised_rgb_%s_%s", pure_name, kind);
 
 	// write output image
 	if (png_write(&img, "img/rgb/", prefix, 0) != 0) {
