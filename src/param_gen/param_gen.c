@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+// #include <time.h>
 #include "../error/error.h"
 #include "../utils/utils.h"
 #include "param_gen.h"
@@ -19,6 +20,10 @@ extern int generate_params_file (char* const kind,
 	char outfile[40];
 	char prefix[30];
 	char line[50];
+	time_t t = time (NULL); 
+	struct tm tm = *localtime (&t);
+	char month[3];
+	char day[3];
 
 	if ((block_size < 10) && (block_step >= 10)) {
 		sprintf (prefix, "params_%s-0%d-%d-%d-%d-%d-%d", kind, block_size, block_step, sigma, max_blocks, h_search, v_search);
@@ -52,7 +57,23 @@ extern int generate_params_file (char* const kind,
 	sprintf (line, "# author:      Thomas Haspl");
 	fprintf (fd, "%s\n", line);
 
-	sprintf (line, "# date:        2015-04-01");
+	// format month approriately
+	if (tm.tm_mon+1 < 10) {
+		sprintf (month, "0%d", tm.tm_mon+1);
+	}
+	else {
+		sprintf (month, "%d", tm.tm_mon+1);
+	}
+
+	// format day approriately
+	if (tm.tm_mday < 10) {
+		sprintf (day, "0%d", tm.tm_mday);
+	}
+	else {
+		sprintf (day, "%d", tm.tm_mday);
+	}
+
+	sprintf (line, "# date:        %d-%s-%s", tm.tm_year+1900, month, day);
 	fprintf (fd, "%s\n", line);
 
 	sprintf (line, "# description: Config-File for the BM3D denoising algorithm");
