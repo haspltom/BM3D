@@ -10,6 +10,7 @@
 
 int image_noise (char* const infile, char* const output_path, int const sigma) {
 	png_img img;
+	png_img org;
 	int i, j;
 	png_byte* row;
 	png_byte* tmp;
@@ -18,6 +19,10 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 	
 	// read input image
 	if (png_read(&img, infile) != 0) {
+		return 1;
+	}
+
+	if (png_read(&org, infile) != 0) {
 		return 1;
 	}
 
@@ -72,6 +77,8 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 	if (png_write(&img, output_path, prefix, sigma) != 0) {
 		return 1;
 	}
+
+	printf ("[INFO] ... PSNR: %fdB\n", get_snr(&org, &img));
 
 	return 0;
 }

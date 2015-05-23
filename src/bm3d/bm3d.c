@@ -1146,7 +1146,7 @@ int bm3d (char* const infile, 			// name of input file
 			 double const tau_match, 		// match value for block-matching
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
-	png_img tmp;								// temporary image for marking the blocks
+	png_img org;								// temporary image for marking the blocks
 	char outfile[40];							// universally used output-filename
 	char path[30];								// universally used path-name
 	char prefix[20];							// universally used prefix-name
@@ -1166,7 +1166,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	// read temporary image
-	if (png_read(&tmp, infile) != 0) {
+	if (png_read(&org, infile) != 0) {
 		return 1;
 	}
 
@@ -1242,7 +1242,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... launch of block-matching...\n");
 	bm_start = clock();
 
-	if (block_matching(kind, &img, 0, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 0, &y_list) != 0) {
+	if (block_matching(kind, &img, &org, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list) != 0) {
 		return 1;
 	}
 
@@ -1407,6 +1407,7 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ... end of color conversion...\n\n");
+	printf ("[INFO] ... PSNR: %fdB\n\n", get_snr(&org, &img));
 
 	// ----------------------------------------------------------------------
 	// FREEING DYNAMICALY ALLOCATED MEMORY
