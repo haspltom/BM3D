@@ -67,6 +67,35 @@ void yuv2rgb (png_img* img) {
 	}
 }
 
+// function that determines the signal-to-noise ratio between two images
+double get_snr (png_img* img, png_img* ref) {
+	double mse = 0.0;
+	double snr = 0.0;
+	png_byte* img_row;
+	png_byte* img_pix;
+	png_byte* ref_row;
+	png_byte* ref_pix;
+	int i, j, k;
+
+	for (k=0; k<3; ++k) {
+		for (j=0; j<img->height; ++j) {
+			img_row = img->data[j];
+			ref_row = ref->data[j];
+
+			for (i=0; i<img->width; ++i) {
+				img_pix = &(img_row[i*3]);
+				ref_pix = &(ref_row[i*3]);
+
+				mse += pow ((img_pix[k] - ref_pix[k]), 2);
+			}
+		}
+	}
+
+	mse = (1.0/(img->width*img->height*3.0)) * mse;
+	snr = 20 * log10 (255.0/sqrt(mse));
+
+	return snr;
+}
 
 
 

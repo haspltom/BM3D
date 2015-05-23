@@ -9,6 +9,9 @@
 extern void rgb2yuv (png_img* img);
 extern void yuv2rgb (png_img* img);
 
+//---------- CALCULATION OF SIGNAL-TO-NOISE RATIO -----------
+extern double get_snr (png_img* img, png_img* ref);
+
 //--------------------- DCT CALCULATIONS --------------------
 extern void dct_1d (int const len, double arr[len]);
 extern void dct_2d (int const len, double arr[len][len]);
