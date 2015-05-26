@@ -11,12 +11,23 @@
 int image_noise (char* const infile, char* const output_path, int const sigma) {
 	png_img img;
 	png_img org;
+	FILE* log;
 	int i, j;
 	png_byte* row;
 	png_byte* tmp;
 	char pure_name[30];
 	char prefix[40];
 	
+	// ----------------------------------------------------------------------
+	// OPEN LOG-FILE FOR WRITING
+	// ----------------------------------------------------------------------
+	log = fopen ("log.txt", "a");
+
+	if (log == NULL) {
+		generate_error ("Unable to open log-file for writing ...");
+		return 1;
+	}
+
 	// read input image
 	if (png_read(&img, infile) != 0) {
 		return 1;
@@ -78,7 +89,8 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 		return 1;
 	}
 
-	printf ("[INFO] ... PSNR: %fdB\n", get_snr(&org, &img));
+	fprintf (log, "[INFO] ... PSNR before denoising: %fdB\n\n", get_snr(&org, &img));
+	fclose (log);
 
 	return 0;
 }

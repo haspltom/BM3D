@@ -1146,14 +1146,25 @@ int bm3d (char* const infile, 			// name of input file
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
 	png_img org;								// temporary image for marking the blocks
+	FILE* log = 0;								// log-file for all kinds of messages
 	char path[30];								// universally used path-name
 	char prefix[20];							// universally used prefix-name
 	char pure_name[30];
 	list_t y_list = 0;						// list of groups	of the y-channel
 	list_t u_list = 0;						// list of groups of the u-channel
 	list_t v_list = 0;						// list of groups of the v-channel
-	clock_t bm_start, bm_end;				// time variables for block matching start and end
+	clock_t start, end;						// time variables for counting durations
 	double time;
+
+	// ----------------------------------------------------------------------
+	// OPEN LOG-FILE FOR WRITING
+	// ----------------------------------------------------------------------
+	log = fopen ("log.txt", "a");
+
+	if (log == NULL) {
+		generate_error ("Unable to open log-file for writing ...");
+		return 1;
+	}
 
 	// ----------------------------------------------------------------------
 	// INPUT READING AND VALIDATION
@@ -1189,19 +1200,17 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// PRINTING OF STATUS INFORMATION
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... .............................................\n");
-	printf ("[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
-	printf ("[INFO] ... kind of shrinkage: %s\n", kind);
-	printf ("[INFO] ... block size: %d\n", block_size);
-	printf ("[INFO] ... block step: %d\n", block_step);
-	printf ("[INFO] ... sigma: %d\n", sigma);
-	printf ("[INFO] ... maximum number of blocks: %d\n", max_blocks);
-	printf ("[INFO] ... horizontal search window size: %d\n", h_search);
-	printf ("[INFO] ... vertical search window size: %d\n", v_search);
-	printf ("[INFO] ... threshold 2D: %f\n", th_2d);
-	printf ("[INFO] ... tau-match 2D: %f\n", tau_match);
-	printf ("[INFO] ... threshold 3D: %f\n", th_3d);
-	printf ("[INFO] ... .............................................\n\n");
+	fprintf (log, "[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
+	fprintf (log, "[INFO] ... kind of shrinkage: %s\n", kind);
+	fprintf (log, "[INFO] ... block size: %d\n", block_size);
+	fprintf (log, "[INFO] ... block step: %d\n", block_step);
+	fprintf (log, "[INFO] ... sigma: %d\n", sigma);
+	fprintf (log, "[INFO] ... maximum number of blocks: %d\n", max_blocks);
+	fprintf (log, "[INFO] ... horizontal search window size: %d\n", h_search);
+	fprintf (log, "[INFO] ... vertical search window size: %d\n", v_search);
+	fprintf (log, "[INFO] ... threshold 2D: %f\n", th_2d);
+	fprintf (log, "[INFO] ... tau-match 2D: %f\n", tau_match);
+	fprintf (log, "[INFO] ... threshold 3D: %f\n\n", th_3d);
 
 
 	// ----------------------------------------------------------------------
@@ -1216,39 +1225,43 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ... end of color conversion...\n\n");
+	fprintf (log, "[INFO] ... converted colorspace of input image to YUV...\n\n");
 
 	// ----------------------------------------------------------------------
 	// IMAGE-TO-ARRAY CONVERSION
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of printing image as three separate value arrays...\n");
 
-	printf ("[INFO] ...    luminance channel...\n");
+	printf ("[INFO] ... ... luminance channel...\n");
 	img2array (&img, 0, "img/", "y_channel_before");
 
-	printf ("[INFO] ...    chrominance channel 1...\n");
+	printf ("[INFO] ... ... chrominance channel 1...\n");
 	img2array (&img, 1, "img/", "u_channel_before");
 
-	printf ("[INFO] ...    chrominance channel 2...\n");
+	printf ("[INFO] ... ... chrominance channel 2...\n");
 	img2array (&img, 2, "img/", "v_channel_before");
 
 	printf ("[INFO] ... end of printing arrays...\n\n");
+	fprintf (log, "[INFO] ... printed every intput channel as array of values...\n\n");
 
 
 	// ----------------------------------------------------------------------
 	// BLOCK-MATCHING
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of block-matching...\n");
-	bm_start = clock();
+	start = clock();
 
 	if (block_matching(kind, &img, &org, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list) != 0) {
 		return 1;
 	}
 
-	bm_end = clock();
-	time = (bm_end - bm_start) / (double)CLOCKS_PER_SEC;
-	printf ("[INFO] ...    elapsed time: %f\n", time);
-	printf ("[INFO] ...    number of groups in list: %d\n", list_length(&y_list));
 	printf ("[INFO] ... end of block-matching...\n\n");
+
+	end = clock();
+	time = (end - start) / (double)CLOCKS_PER_SEC;
+	fprintf (log, "[INFO] ... block-matching accomplished...\n");
+	fprintf (log, "[INFO] ... ... elapsed time: %f\n", time);
+	fprintf (log, "[INFO] ... ... number of groups in list: %d\n\n", list_length(&y_list));
 
 	// print recognized groups to file
 	sprintf (path, "grp/org/%s/y/", kind);
@@ -1262,17 +1275,21 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
+	fprintf (log, "[INFO] ... trimmed groups to maximum size of blocks...\n\n");
+
 	// obtain the pixel values from the u- and v-channel of the image
 	printf ("[INFO] ... extracting blocks from chrominance channels...\n\n");
-	printf ("[INFO] ...    chrominance channel 1...\n");
+	printf ("[INFO] ... ... chrominance channel 1...\n");
 	if (get_chrom(&img, &y_list, &u_list, 1)) {
 		return 1;
 	}
 
-	printf ("[INFO] ...    chrominance channel 2...\n");
+	printf ("[INFO] ... ... chrominance channel 2...\n");
 	if (get_chrom(&img, &y_list, &v_list, 2)) {
 		return 1;
 	}
+
+	fprintf (log, "[INFO] ... extracted values from chrominance channels...\n\n");
 
 	// print trimmed groups to file
 	sprintf (path, "grp/trm/%s/y/", kind);
@@ -1298,23 +1315,30 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// IMAGE-DENOISING
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ... launch of denoising...\n");
-	printf ("[INFO] ...    determining estimates...\n");
+	printf ("[INFO] ... launch of shrinkage...\n");
+	printf ("[INFO] ... ... luminance channel...\n");
+	start = clock();
 
-	printf ("[INFO] ...       luminance channel...\n");
 	if (shrinkage(kind, &y_list, sigma, th_3d, 0) != 0) {
 		return 1;
 	}
 
-	// printf ("[INFO] ...       chrominance channel 1...\n");
+	// printf ("[INFO] ... ... chrominance channel 1...\n");
 	// if (shrinkage(kind, &u_list, sigma, th_3d, 1) != 0) {
 	// 	return 1;
 	// }
 
-	// printf ("[INFO] ...       chrominance channel 2...\n");
+	// printf ("[INFO] ... ... chrominance channel 2...\n");
 	// if (shrinkage(kind, &v_list, sigma, th_3d, 1) != 0) {
 	// 	return 1;
 	// }
+
+	printf ("[INFO] ... end of shrinkage...\n\n");
+
+	end = clock();
+	time = (end - start) / (double)CLOCKS_PER_SEC;
+	fprintf (log, "[INFO] ... accomplished shrinkage...\n");
+	fprintf (log, "[INFO] ... ... elapsed time: %f\n\n", time);
 
 	sprintf (path, "grp/est/%s/y/", kind);
 
@@ -1337,9 +1361,10 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// AGGREGATION
 	// ----------------------------------------------------------------------
-	printf ("[INFO] ...    aggregating local estimates...\n");
+	printf ("[INFO] ... launch of aggregation...\n");
+	printf ("[INFO] ... ... luminance channel...\n");
+	start = clock();
 
-	printf ("[INFO] ...       luminance channel...\n");
 	if (aggregate(kind, &img, &y_list, 0) != 0) {
 		return 1;
 	}
@@ -1354,7 +1379,12 @@ int bm3d (char* const infile, 			// name of input file
 	// 	return 1;
 	// }
 
-	printf ("[INFO] ... end of denoising...\n\n");
+	printf ("[INFO] ... end of aggregation...\n\n");
+
+	end = clock();
+	time = (end - start) / (double)CLOCKS_PER_SEC;
+	fprintf (log, "[INFO] ... accomplished aggregation...\n");
+	fprintf (log, "[INFO] ... ... elapsed time: %f\n\n", time);
 	
 
 	// ----------------------------------------------------------------------
@@ -1362,13 +1392,13 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of printing image as three separate value arrays...\n");
 
-	printf ("[INFO] ...    luminance channel...\n");
+	printf ("[INFO] ... ... luminance channel...\n");
 	img2array (&img, 0, "img/", "y_channel_after");
 
-	printf ("[INFO] ...    chrominance channel 1...\n");
+	printf ("[INFO] ... ... chrominance channel 1...\n");
 	img2array (&img, 1, "img/", "u_channel_after");
 
-	printf ("[INFO] ...    chrominance channel 2...\n");
+	printf ("[INFO] ... ... chrominance channel 2...\n");
 	img2array (&img, 2, "img/", "v_channel_after");
 
 	printf ("[INFO] ... end of printing arrays...\n\n");
@@ -1393,12 +1423,14 @@ int bm3d (char* const infile, 			// name of input file
 	}
 
 	printf ("[INFO] ... end of color conversion...\n\n");
-	printf ("[INFO] ... PSNR: %fdB\n\n", get_snr(&org, &img));
+	fprintf (log, "[INFO] ... converted colorspace of output image to RGB...\n\n");
+	fprintf (log, "[INFO] ... PSNR after denoising: %fdB\n", get_snr(&org, &img));
 
 	// ----------------------------------------------------------------------
 	// FREEING DYNAMICALY ALLOCATED MEMORY
 	// ----------------------------------------------------------------------
 	png_free_mem (&img);
+	fclose (log);
 
 	return 0;
 }
