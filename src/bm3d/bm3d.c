@@ -128,8 +128,6 @@ int print_list (list_t const list, char* const path, char* const prefix) {
 	char groupname[40];
 	int count = 0;
 
-	printf ("[INFO] ... printing groups to file...\n");
-
 	while (tmp != NULL) {
 		//obtain output filename
 		if (get_output_filename (groupname, path, prefix, "txt", ++count) != 0) {
@@ -1057,8 +1055,8 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 					wbuf[yindex][xindex] += tmp->weight;
 
 					if (xindex==174 && yindex==98) {
-						printf ("block_data: %f\n", block->data[j][i]);
-						printf ("weight: %f\n", tmp->weight);
+						// printf ("block_data: %f\n", block->data[j][i]);
+						// printf ("weight: %f\n", tmp->weight);
 					}
 				}
 			}
@@ -1099,8 +1097,8 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 
 				// probably the reason for the artefacts at the bottom
 				if (estbuf[j][i] < 0) {
-					printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
-					printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
+					// printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
+					// printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
 				}
 			}
 		}
@@ -1128,7 +1126,7 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			// pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
 		}
 	}
-	printf ("Number of uneven pixels: %d\n", uneven);
+	// printf ("Number of uneven pixels: %d\n", uneven);
 	
 	return 0;
 }
@@ -1249,6 +1247,7 @@ int bm3d (char* const infile, 			// name of input file
 	// BLOCK-MATCHING
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of block-matching...\n");
+	printf ("[INFO] ... ... luminance channel...\n");
 	start = clock();
 
 	if (block_matching(kind, &img, &org, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list) != 0) {
@@ -1278,13 +1277,13 @@ int bm3d (char* const infile, 			// name of input file
 	fprintf (log, "[INFO] ... trimmed groups to maximum size of blocks...\n\n");
 
 	// obtain the pixel values from the u- and v-channel of the image
-	printf ("[INFO] ... extracting blocks from chrominance channels...\n\n");
+	printf ("[INFO] ... extracting blocks from chrominance channels...\n");
 	printf ("[INFO] ... ... chrominance channel 1...\n");
 	if (get_chrom(&img, &y_list, &u_list, 1)) {
 		return 1;
 	}
 
-	printf ("[INFO] ... ... chrominance channel 2...\n");
+	printf ("[INFO] ... ... chrominance channel 2...\n\n");
 	if (get_chrom(&img, &y_list, &v_list, 2)) {
 		return 1;
 	}

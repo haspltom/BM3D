@@ -206,7 +206,7 @@ int png_write (png_img* const img, char* const path, char* const prefix, int con
 		return 1;
 	}
 
-	printf ("[INFO] ... File \"%s\" written successfully...\n", outfile);
+	// printf ("[INFO] ... File \"%s\" written successfully...\n", outfile);
 
 	return 0;
 }
