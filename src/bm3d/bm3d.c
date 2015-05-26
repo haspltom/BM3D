@@ -5,7 +5,6 @@
 #include <time.h>
 #include "../png_io/png_io.h"
 #include "../error/error.h"
-#include "../csv_export/csv_export.h"
 #include "../utils/utils.h"
 #include "bm3d.h"
 
@@ -1147,7 +1146,6 @@ int bm3d (char* const infile, 			// name of input file
 			 double const th_3d) {			// threshold for the 3D transformtaion
 	png_img img;								// noisy input image
 	png_img org;								// temporary image for marking the blocks
-	char outfile[40];							// universally used output-filename
 	char path[30];								// universally used path-name
 	char prefix[20];							// universally used prefix-name
 	char pure_name[30];
@@ -1255,18 +1253,6 @@ int bm3d (char* const infile, 			// name of input file
 	// print recognized groups to file
 	sprintf (path, "grp/org/%s/y/", kind);
 	if (print_list(y_list, path, "group") != 0) {
-		return 1;
-	}
-
-	// set filename for txt-file of groups
-	if (get_output_filename (outfile, "bms/", "block_matching_statistics", "csv", block_size) != 0) {
-		generate_error ("Unable to process output filename...");
-		return 1;
-	}
-
-	// add number of groups and computation time to txt-file for statistical evaluation
-	if (add_csv_line(outfile, block_step, list_length(&y_list), time) != 0) {
-		generate_error ("Unable to add values to csv-file...");
 		return 1;
 	}
 

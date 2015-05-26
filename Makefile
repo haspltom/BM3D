@@ -6,7 +6,7 @@ ORGDIRS = orgavydir orgavudir orgavvdir orghtydir orghtudir orghtvdir orgwnydir 
 TRMDIRS = trmavydir trmavudir trmavvdir trmhtydir trmhtudir trmhtvdir trmwnydir trmwnudir trmwnvdir trmnoydir trmnoudir trmnovdir
 ESTDIRS = estavydir estavudir estavvdir esthtydir esthtudir esthtvdir estwnydir estwnudir estwnvdir estnoydir estnoudir estnovdir
 DNSDIRS = dnsavydir dnsavudir dnsavvdir dnshtydir dnshtudir dnshtvdir dnswnydir dnswnudir dnswnvdir dnsnoydir dnsnoudir dnsnovdir
-SRC     = main.c error.c png_io.c param_pars.c csv_export.c utils.c noising.c param_gen.c bm3d.c
+SRC     = main.c error.c png_io.c param_pars.c utils.c noising.c param_gen.c bm3d.c
 LIBS    = -lm -lpng12
 CFLAGS  = -g3 -Wall -I/usr/include/libpng12
 MKDIR   = mkdir
@@ -190,9 +190,9 @@ param_gen: $(OBJDIR)/param_gen.o $(OBJDIR)/error.o $(OBJDIR)/utils.o
 	@echo "Link $< ..."
 	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/utils.o $(OBJDIR)/param_gen.o $(LIBS)
  
-bm3d: $(OBJDIR)/main.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/csv_export.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o
+bm3d: $(OBJDIR)/main.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o
 	@echo "Link $< ..."
-	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/csv_export.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o $(OBJDIR)/main.o $(LIBS)
+	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o $(OBJDIR)/main.o $(LIBS)
  
 $(OBJDIR)/error.o: $(SRCDIR)/error/error.c
 	@echo "Compile $< ..."
@@ -203,10 +203,6 @@ $(OBJDIR)/png_io.o: $(SRCDIR)/png_io/png_io.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
        
 $(OBJDIR)/param_pars.o: $(SRCDIR)/param_pars/param_pars.c
-	@echo "Compile $< ..."
-	@$(CC) -c $(CFLAGS) -o $@ $<
-       
-$(OBJDIR)/csv_export.o: $(SRCDIR)/csv_export/csv_export.c
 	@echo "Compile $< ..."
 	@$(CC) -c $(CFLAGS) -o $@ $<
        
