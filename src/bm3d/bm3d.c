@@ -632,7 +632,7 @@ int block_matching (char* const kind,
 				// write output image with marked group in it
 				if (block_marking) {
 					yuv2rgb(tmp);
-					if (png_write(tmp, "img/rgb/grp", "group", ++count) != 0) {
+					if (png_write(tmp, "img/rgb/grp/", "group", ++count) != 0) {
 						return 1;
 					}
 				}
