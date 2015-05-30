@@ -83,7 +83,6 @@ int png_read (png_img* img, char* const filename) {
 	img->color = png_get_color_type (png, png_info);
 	img->depth = png_get_bit_depth (png, png_info);
 	img->channels = png_get_channels (png, png_info);
-	img->passes = png_set_interlace_handling (png);
 
 	png_read_update_info (png, png_info);
 

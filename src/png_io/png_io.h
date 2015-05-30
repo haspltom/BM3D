@@ -10,7 +10,6 @@ typedef struct png_img_struct {
 	int width;
 	int height;
 	int channels;
-	int passes;
 	png_byte color;						// type of color
 	png_byte depth;						// bit depth
 	png_bytep* data;						// array of rows
