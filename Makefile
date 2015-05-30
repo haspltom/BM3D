@@ -1,6 +1,7 @@
 CC      = clang
-BIN     = noising param_gen bm3d
-DEFDIRS = objdir resdir bmsdir 
+# BIN     = noising param_gen bm3d
+BIN     = param_gen bm3d
+DEFDIRS = objdir resdir bmsdir logdir
 IMGDIRS = yuvdir rgbgrpdir
 ORGDIRS = orgavydir orgavudir orgavvdir orghtydir orghtudir orghtvdir orgwnydir orgwnudir orgwnvdir orgnoydir orgnoudir orgnovdir 
 TRMDIRS = trmavydir trmavudir trmavvdir trmhtydir trmhtudir trmhtvdir trmwnydir trmwnudir trmwnvdir trmnoydir trmnoudir trmnovdir
@@ -18,6 +19,7 @@ RESDIR  = res
 GRPDIR  = grp
 BMSDIR  = bms
 DNSDIR  = dns
+LOGDIR  = log
 OBJ     := $(subst .$(EXT),.o,$(SRC))
 OBJ     := $(addprefix $(OBJDIR)/, $(OBJ))
  
@@ -182,17 +184,20 @@ dnsnoudir:
 dnsnovdir:
 	$(MKDIR) -p $(DNSDIR)/none/v/grp
 
-noising: $(OBJDIR)/noising.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o
-	@echo "Link $< ..."
-	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o $(OBJDIR)/noising.o $(LIBS)
+logdir:
+	$(MKDIR) -p $(LOGDIR)
+
+# noising: $(OBJDIR)/noising.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o
+# 	@echo "Link $< ..."
+# 	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o $(OBJDIR)/noising.o $(LIBS)
  
 param_gen: $(OBJDIR)/param_gen.o $(OBJDIR)/error.o $(OBJDIR)/utils.o
 	@echo "Link $< ..."
 	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/utils.o $(OBJDIR)/param_gen.o $(LIBS)
  
-bm3d: $(OBJDIR)/main.o $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o
+bm3d: $(OBJDIR)/main.o $(OBJDIR)/error.o $(OBJDIR)/param_pars.o $(OBJDIR)/noising.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o
 	@echo "Link $< ..."
-	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/png_io.o $(OBJDIR)/param_pars.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o $(OBJDIR)/main.o $(LIBS)
+	@$(CC) -o $@ $(OBJDIR)/error.o $(OBJDIR)/param_pars.o $(OBJDIR)/noising.o $(OBJDIR)/png_io.o $(OBJDIR)/utils.o $(OBJDIR)/bm3d.o $(OBJDIR)/main.o $(LIBS)
  
 $(OBJDIR)/error.o: $(SRCDIR)/error/error.c
 	@echo "Compile $< ..."
@@ -227,4 +232,4 @@ $(OBJDIR)/main.o: $(SRCDIR)/main.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
  
 clean:
-	rm -r noising param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(IMGDIR)/*.txt $(GRPDIR) $(BMSDIR) $(DNSDIR) log.txt
+	rm -r param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(IMGDIR)/*.txt $(GRPDIR) $(BMSDIR) $(DNSDIR)

@@ -231,7 +231,13 @@ int limit (int const x) {
 int exclude_extension (char* const str, char* name) {
 	int count = 0;
 	char tmp[30];
-	char* iter = strrchr (str, '/');
+	char* iter = 0;
+	
+	iter = strrchr (str, '_');
+
+	if (!iter) {
+		iter = strrchr (str, '/');
+	}
 
 	if (!iter) {
 		generate_error ("Invalid input filename...");
@@ -240,7 +246,7 @@ int exclude_extension (char* const str, char* name) {
 
 	++iter; 		// in order to exclude the '/' itself as well
 
-	while (iter && (*iter != '.')) {
+	while (iter && (*iter != '.') && (*iter != '[')) {
 		tmp[count] = *iter;
 		++iter;
 		++count;

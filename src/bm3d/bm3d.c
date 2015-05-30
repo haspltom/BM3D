@@ -1145,6 +1145,7 @@ int bm3d (char* const infile, 			// name of input file
 	png_img img;								// noisy input image
 	png_img org;								// temporary image for marking the blocks
 	FILE* log = 0;								// log-file for all kinds of messages
+	char logfile[30];							// name of the log-file including path
 	char path[30];								// universally used path-name
 	char prefix[20];							// universally used prefix-name
 	char pure_name[30];
@@ -1157,7 +1158,15 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// OPEN LOG-FILE FOR WRITING
 	// ----------------------------------------------------------------------
-	log = fopen ("log.txt", "a");
+
+	// obtain filename without path and extension
+	if (exclude_extension(infile, pure_name) != 0) {
+		return 1;
+	}
+
+	sprintf (logfile, "log/log_%s[%d].txt", pure_name, sigma);
+
+	log = fopen (logfile, "a");
 
 	if (log == NULL) {
 		generate_error ("Unable to open log-file for writing ...");
@@ -1198,6 +1207,8 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// PRINTING OF STATUS INFORMATION
 	// ----------------------------------------------------------------------
+	fprintf (log, "-------------------------------------------------------------------------\n");
+	fprintf (log, "-------------------------------------------------------------------------\n");
 	fprintf (log, "[INFO] ... image dimensions: %dx%d\n", img.width, img.height);
 	fprintf (log, "[INFO] ... kind of shrinkage: %s\n", kind);
 	fprintf (log, "[INFO] ... block size: %d\n", block_size);
@@ -1409,11 +1420,6 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... launch of color conversion...\n");
 	yuv2rgb (&img);
 
-	// obtain filename without path and extension
-	if (exclude_extension(infile, pure_name) != 0) {
-		return 1;
-	}
-
 	sprintf (prefix, "denoised_rgb_%s_%s", pure_name, kind);
 
 	// write output image
@@ -1424,6 +1430,8 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... end of color conversion...\n\n");
 	fprintf (log, "[INFO] ... converted colorspace of output image to RGB...\n\n");
 	fprintf (log, "[INFO] ... PSNR after denoising: %fdB\n", get_snr(&org, &img));
+	fprintf (log, "-------------------------------------------------------------------------\n");
+	fprintf (log, "-------------------------------------------------------------------------\n\n\n");
 
 	// ----------------------------------------------------------------------
 	// FREEING DYNAMICALY ALLOCATED MEMORY

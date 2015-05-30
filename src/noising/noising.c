@@ -17,11 +17,20 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 	png_byte* tmp;
 	char pure_name[30];
 	char prefix[40];
+	char logfile[30];
 	
 	// ----------------------------------------------------------------------
 	// OPEN LOG-FILE FOR WRITING
 	// ----------------------------------------------------------------------
-	log = fopen ("log.txt", "a");
+
+	// obtain filename without path and extension
+	if (exclude_extension(infile, pure_name) != 0) {
+		return 1;
+	}
+
+	sprintf (logfile, "log/log_%s[%d].txt", pure_name, sigma);
+
+	log = fopen (logfile, "a");
 
 	if (log == NULL) {
 		generate_error ("Unable to open log-file for writing ...");
@@ -77,11 +86,6 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 		}
 	}
 
-	// obtain filename without path and extension
-	if (exclude_extension(infile, pure_name) != 0) {
-		return 1;
-	}
-
 	sprintf (prefix, "noisy_rgb_%s", pure_name);
 
 	// write output image
@@ -89,29 +93,29 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 		return 1;
 	}
 
-	fprintf (log, "[INFO] ... PSNR before denoising: %fdB\n\n", get_snr(&org, &img));
+	fprintf (log, "[INFO] ... PSNR before denoising: %fdB\n\n\n", get_snr(&org, &img));
 	fclose (log);
 
 	return 0;
 }
 
 // main procedure, which calls the noising() function
-int main (int argc, char **argv) {
-	char* err_prefix = "[ERROR] ... ";
-
-	// check arguments
-	if (argc < 4) {
-		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
-		printf ("Usage:\n");
-		printf ("noising <standard deviation> <filename> <output path>\n");
-		return 1;
-	}
-
-	if (image_noise(argv[2], argv[3], atoi(argv[1])) != 0) {
-		printf ("%s%s\n", err_prefix, ptr);
-		// free (ptr); //TODO
-		return 1;
-	}
-
-	return 0;
-}
+// int main (int argc, char **argv) {
+// 	char* err_prefix = "[ERROR] ... ";
+// 
+// 	// check arguments
+// 	if (argc < 4) {
+// 		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
+// 		printf ("Usage:\n");
+// 		printf ("noising <standard deviation> <filename> <output path>\n");
+// 		return 1;
+// 	}
+// 
+// 	if (image_noise(argv[2], argv[3], atoi(argv[1])) != 0) {
+// 		printf ("%s%s\n", err_prefix, ptr);
+// 		// free (ptr); //TODO
+// 		return 1;
+// 	}
+// 
+// 	return 0;
+// }
