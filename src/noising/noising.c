@@ -94,28 +94,13 @@ int image_noise (char* const infile, char* const output_path, int const sigma) {
 	}
 
 	fprintf (log, "[INFO] ... PSNR before denoising: %fdB\n\n\n", get_snr(&org, &img));
+
+	// ----------------------------------------------------------------------
+	// FREEING DYNAMICALY ALLOCATED MEMORY
+	// ----------------------------------------------------------------------
+	png_free_mem (&img);
+	png_free_mem (&org);
 	fclose (log);
 
 	return 0;
 }
-
-// main procedure, which calls the noising() function
-// int main (int argc, char **argv) {
-// 	char* err_prefix = "[ERROR] ... ";
-// 
-// 	// check arguments
-// 	if (argc < 4) {
-// 		printf ("%s%s\n", err_prefix, "Wrong number of arguments...");
-// 		printf ("Usage:\n");
-// 		printf ("noising <standard deviation> <filename> <output path>\n");
-// 		return 1;
-// 	}
-// 
-// 	if (image_noise(argv[2], argv[3], atoi(argv[1])) != 0) {
-// 		printf ("%s%s\n", err_prefix, ptr);
-// 		// free (ptr); //TODO
-// 		return 1;
-// 	}
-// 
-// 	return 0;
-// }

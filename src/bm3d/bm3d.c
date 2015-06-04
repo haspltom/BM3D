@@ -60,12 +60,35 @@ unsigned int group_length (group_t* group){
 	return len;
 }
 
+void free_block (block_t* block) {
+	int i;
+
+	for (i=0; i<block->block_size; ++i) {
+		free (block->data[i]);
+	}
+
+	free (block->data);
+	free (block);
+	block = NULL;
+}
+
 void free_group (group_t* group) {
 	block_node_t* tmp = *group;
 
 	while (*group != NULL) {
 		tmp = *group;
 		*group = tmp->next;
+		free_block (&tmp->block);
+	}
+}
+
+void free_list (list_t* list) {
+	group_node_t* tmp = *list;
+
+	while (*list != NULL) {
+		tmp = *list;
+		*list = tmp->next;
+		free_group (&tmp->group);
 		free (tmp);
 	}
 }
@@ -698,7 +721,6 @@ int get_chrom (png_img* img, list_t* source_list, list_t* target_list, unsigned 
 		tmp_group = 0; 
 		tmp = tmp->next;
 	}
-	// TODO delete dynamic memory
 
 	return 0;
 }
@@ -1436,7 +1458,11 @@ int bm3d (char* const infile, 			// name of input file
 	// ----------------------------------------------------------------------
 	// FREEING DYNAMICALY ALLOCATED MEMORY
 	// ----------------------------------------------------------------------
+	free_list (&y_list);
+	free_list (&u_list);
+	free_list (&v_list);
 	png_free_mem (&img);
+	png_free_mem (&org);
 	fclose (log);
 
 	return 0;
