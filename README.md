@@ -47,7 +47,6 @@ In this case, the recognized blocks for the channel *y* will be marked in images
 	* The source of the problem seems to be in function `aggregate()`, because always the first call
 	  of `aggregate()` is correct, no matter with which channel. So actually, it is not a problem
 	  bound to the channels *u* and *v*, but rather to function `aggregate()`.
-* Freeing all the dynamically allocated memory is still missing.
 * Unprocessed borders
 	* Due to the fact, that the recognition of the blocks is dependend from the block step, there
 	  always remain a certain border, which is not executed at all.
