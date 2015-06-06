@@ -12,6 +12,7 @@ typedef struct params {
 	double th_2d;
 	double tau_2d;
 	double th_3d;
+	unsigned int block_marking;
 } params_t;
 
 typedef enum states {

@@ -55,7 +55,8 @@ int main (int argc, char **argv) {
 				params.v_search,
 				params.th_2d,
 				params.tau_2d,
-				params.th_3d) != 0) {
+				params.th_3d,
+				params.block_marking) != 0) {
 		printf ("%s%s\n", err_prefix, ptr);
 		// free (ptr); //TODO
 		return 1;

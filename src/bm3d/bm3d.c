@@ -1164,7 +1164,8 @@ int bm3d (char* const infile, 			// name of input file
 			 int const v_search, 			// vertical width of search window
 			 double const th_2d,				// threshold for the 2D transformation
 			 double const tau_match, 		// match value for block-matching
-			 double const th_3d) {			// threshold for the 3D transformtaion
+			 double const th_3d,				// threshold for the 3D transformtaion
+			 int const block_marking) {	// indicates the action of block marking
 	png_img img;								// noisy input image
 	png_img org;								// temporary image for marking the blocks
 	FILE* log = 0;								// log-file for all kinds of messages
@@ -1263,7 +1264,8 @@ int bm3d (char* const infile, 			// name of input file
 	fprintf (log, "[INFO] ... vertical search window size: %d\n", v_search_true);
 	fprintf (log, "[INFO] ... threshold 2D: %f\n", th_2d);
 	fprintf (log, "[INFO] ... tau-match 2D: %f\n", tau_match);
-	fprintf (log, "[INFO] ... threshold 3D: %f\n\n", th_3d);
+	fprintf (log, "[INFO] ... threshold 3D: %f\n", th_3d);
+	fprintf (log, "[INFO] ... block marking: %s\n\n", block_marking ? "yes" : "no");
 
 
 	// ----------------------------------------------------------------------
@@ -1305,7 +1307,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... ... luminance channel...\n");
 	start = clock();
 
-	if (block_matching(&img, &org, block_size, block_step, sigma, h_search_true, v_search_true, th_2d, tau_match, 0, 1, &y_list) != 0) {
+	if (block_matching(&img, &org, block_size, block_step, sigma, h_search_true, v_search_true, th_2d, tau_match, 0, block_marking, &y_list) != 0) {
 		return 1;
 	}
 

@@ -121,6 +121,9 @@ int get_params (char* const filename, params_t* params) {
 			else if (strstr(tmp, "THRESHOLD_3D") != NULL) {
 				params->th_3d = get_val(tmp);
 			}
+			else if (strstr(tmp, "BLOCK_MARKING") != NULL) {
+				params->block_marking = get_val(tmp);
+			}
 		}
 	}
 

@@ -10,6 +10,7 @@ extern int generate_params_file (char* const kind,
 											unsigned int const v_search,
 											double const th_2d,
 											double const tau_2d,
-											double const th_3d);
+											double const th_3d,
+											unsigned int block_marking);
 
 #endif // PARAM_GEN_H
