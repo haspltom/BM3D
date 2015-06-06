@@ -232,4 +232,4 @@ $(OBJDIR)/main.o: $(SRCDIR)/main.c
 	@$(CC) -c $(CFLAGS) -o $@ $<
  
 clean:
-	rm -r param_gen bm3d $(OBJDIR) $(IMGDIR)/rgb/ $(IMGDIR)/yuv/ $(IMGDIR)/*.txt $(GRPDIR) $(BMSDIR) $(DNSDIR)
+	rm -r param_gen bm3d $(OBJDIR) $(IMGDIR)/yuv/grp/ $(IMGDIR)/yuv/ $(IMGDIR)/*.txt $(GRPDIR) $(BMSDIR) $(DNSDIR)

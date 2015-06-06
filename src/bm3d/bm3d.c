@@ -1445,7 +1445,7 @@ int bm3d (char* const infile, 			// name of input file
 	sprintf (prefix, "denoised_rgb_%s_%s", pure_name, kind);
 
 	// write output image
-	if (png_write(&img, "img/rgb/", prefix, 0) != 0) {
+	if (png_write(&img, "img/rgb/", prefix, sigma) != 0) {
 		return 1;
 	}
 
