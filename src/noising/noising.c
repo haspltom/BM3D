@@ -8,7 +8,7 @@
 #include "../utils/utils.h"
 #include "noising.h"
 
-int image_noise (char* const infile, char* const output_path, int const sigma) {
+int add_image_noise (char* const infile, char* const output_path, int const sigma) {
 	png_img img;
 	png_img org;
 	FILE* log;

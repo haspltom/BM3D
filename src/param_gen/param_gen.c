@@ -17,8 +17,8 @@ extern int generate_params_file (char* const kind,
 											double const tau_2d,
 											double const th_3d) {
 	FILE* fd;
-	char outfile[40];
-	char prefix[30];
+	char outfile[50];
+	char prefix[50];
 	char line[50];
 	time_t t = time (NULL); 
 	struct tm tm = *localtime (&t);

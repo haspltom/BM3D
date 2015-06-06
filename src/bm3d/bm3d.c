@@ -564,8 +564,7 @@ double get_block_distance (block_t* ref_block, block_t* cmp_block, int const sig
 }
 
 // method, which performs the block-matching for a given channel
-int block_matching (char* const kind,
-						  png_img* img,
+int block_matching (png_img* img,
 						  png_img* tmp,
 						  unsigned int const b_size,
 						  unsigned int const b_step,
@@ -781,12 +780,14 @@ int trim_list (list_t* list, unsigned int const max_blocks) {
 	}
 
 	// go through all groups
-	while (tmp->next != NULL) {
-		if (trim_group(&tmp->group, max_blocks) != 0) {
-			return 1;
-		}
+	if (max_blocks > 0) {
+		while (tmp->next != NULL) {
+			if (trim_group(&tmp->group, max_blocks) != 0) {
+				return 1;
+			}
 
-		tmp = tmp->next;
+			tmp = tmp->next;
+		}
 	}
 
 	return 0;
@@ -1171,6 +1172,8 @@ int bm3d (char* const infile, 			// name of input file
 	char path[30];								// universally used path-name
 	char prefix[20];							// universally used prefix-name
 	char pure_name[30];
+	int h_search_true;						// true value of horizontal search window size after validation
+	int v_search_true;						// true value of vertical search window size after validation
 	list_t y_list = 0;						// list of groups	of the y-channel
 	list_t u_list = 0;						// list of groups of the u-channel
 	list_t v_list = 0;						// list of groups of the v-channel
@@ -1220,11 +1223,30 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	// control search window dimensions
-	if ((h_search > img.width) || (v_search > img.height)) {
-		generate_error ("Invalid dimensions for search window...");
+	// ----------------------------------------------------------------------
+	// PARAMETER VALIDATION
+	// ----------------------------------------------------------------------
+	// verify kind of shrinkage
+	if (strcmp(kind, "none") && strcmp(kind, "avg") && strcmp(kind, "ht") && strcmp(kind, "wnr")) {
+		generate_error ("Unknown kind of shrinkage...");
 		return 1;
 	}
+
+	// verify block size
+	if ((block_size!=7) && (block_size!=9) && (block_size!=11) && (block_size!=13)) {
+		generate_error ("Wrong value for block size...\nValid values: 7, 9, 11, 13");
+		return 1;
+	}
+	
+	// verify block step
+	if ((block_step<5) || (block_step>15)) {
+		generate_error ("Block step is out of valid Range...\nValid range: 5..15");
+		return 1;
+	}
+
+	// control search window dimensions
+	h_search_true = ((h_search > img.width) || (h_search <= 0)) ? img.width : h_search;
+	v_search_true = ((v_search > img.height) || (v_search <= 0)) ? img.height : v_search;
 
 	// ----------------------------------------------------------------------
 	// PRINTING OF STATUS INFORMATION
@@ -1237,8 +1259,8 @@ int bm3d (char* const infile, 			// name of input file
 	fprintf (log, "[INFO] ... block step: %d\n", block_step);
 	fprintf (log, "[INFO] ... sigma: %d\n", sigma);
 	fprintf (log, "[INFO] ... maximum number of blocks: %d\n", max_blocks);
-	fprintf (log, "[INFO] ... horizontal search window size: %d\n", h_search);
-	fprintf (log, "[INFO] ... vertical search window size: %d\n", v_search);
+	fprintf (log, "[INFO] ... horizontal search window size: %d\n", h_search_true);
+	fprintf (log, "[INFO] ... vertical search window size: %d\n", v_search_true);
 	fprintf (log, "[INFO] ... threshold 2D: %f\n", th_2d);
 	fprintf (log, "[INFO] ... tau-match 2D: %f\n", tau_match);
 	fprintf (log, "[INFO] ... threshold 3D: %f\n\n", th_3d);
@@ -1283,7 +1305,7 @@ int bm3d (char* const infile, 			// name of input file
 	printf ("[INFO] ... ... luminance channel...\n");
 	start = clock();
 
-	if (block_matching(kind, &img, &org, block_size, block_step, sigma, h_search, v_search, th_2d, tau_match, 0, 1, &y_list) != 0) {
+	if (block_matching(&img, &org, block_size, block_step, sigma, h_search_true, v_search_true, th_2d, tau_match, 0, 1, &y_list) != 0) {
 		return 1;
 	}
 
