@@ -53,8 +53,6 @@ In this case, the recognized blocks for the channel *y* will be marked in images
 * Pixel artefacts at the bottom
 	* Mostly there are some strange artefacts in the last few lines of the output image, which
 	  origins are not clarified yet.
-* Nearly no validation of the input parameters so far
-	* When there is a faulty parameter, which can not be handled the program probably crashes.
 
 ### Parameters:
 * **Kinds of shrinkage:** none, avg, ht, wnr
