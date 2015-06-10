@@ -1076,11 +1076,6 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 					xindex = i+x;
 					ebuf[yindex][xindex] += block->data[j][i] * tmp->weight;
 					wbuf[yindex][xindex] += tmp->weight;
-
-					if (xindex==174 && yindex==98) {
-						// printf ("block_data: %f\n", block->data[j][i]);
-						// printf ("weight: %f\n", tmp->weight);
-					}
 				}
 			}
 
@@ -1090,27 +1085,27 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 		tmp = tmp->next;
 	}
 
-	switch (channel) {
-		case 0:
-			sprintf (path, "dns/%s/y/", kind);
-			break;
-		case 1:
-			sprintf (path, "dns/%s/u/", kind);
-			break;
-		case 2:
-			sprintf (path, "dns/%s/v/", kind);
-			break;
-		default:
-			break;
-	}
+	// switch (channel) {
+	// 	case 0:
+	// 		sprintf (path, "dns/%s/y/", kind);
+	// 		break;
+	// 	case 1:
+	// 		sprintf (path, "dns/%s/u/", kind);
+	// 		break;
+	// 	case 2:
+	// 		sprintf (path, "dns/%s/v/", kind);
+	// 		break;
+	// 	default:
+	// 		break;
+	// }
 
-	if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
-		return 1;
-	}	
-	
-	if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
-		return 1;
-	}	
+	// if (d_buf2file(img->width, img->height, ebuf, path, "ebuf") != 0) {
+	// 	return 1;
+	// }	
+	// 
+	// if (d_buf2file(img->width, img->height, wbuf, path, "wbuf") != 0) {
+	// 	return 1;
+	// }	
 
 	// determine estimates by dividing ebuf with wbuf
 	for (j=0; j<img->height; ++j) {
@@ -1120,17 +1115,17 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 
 				// probably the reason for the artefacts at the bottom
 				if (estbuf[j][i] < 0) {
-					// printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
-					// printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
+					printf ("faulty value %d at position (%d/%d)\n", estbuf[j][i], i, j);
+					printf ("ebuf: %f wbuf: %f\n\n", ebuf[j][i], wbuf[j][i]);
 				}
 			}
 		}
 	}
 
 	// write buffer with local estimates to file
-	if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
-		return 1;
-	}	
+	// if (i_buf2file(img->width, img->height, estbuf, path, "estimates") != 0) {
+	// 	return 1;
+	// }	
 
 	// write local estimates back to image
 	for (j=0; j<img->height; ++j) {
@@ -1149,7 +1144,7 @@ int aggregate(char* const kind, png_img* img, list_t* list, unsigned int channel
 			// pix[channel] = (estbuf[j][i] != 0) ? estbuf[j][i] : pix[channel];
 		}
 	}
-	// printf ("Number of uneven pixels: %d\n", uneven);
+	printf ("Number of uneven pixels: %d\n", uneven);
 	
 	return 0;
 }
@@ -1190,7 +1185,7 @@ int bm3d (char* const infile, 			// name of input file
 		return 1;
 	}
 
-	sprintf (logfile, "log/log_%s[%d].txt", pure_name, sigma);
+	sprintf (logfile, "log/log_%s_%s[%d].txt", pure_name, kind, sigma);
 
 	log = fopen (logfile, "a");
 
@@ -1372,9 +1367,9 @@ int bm3d (char* const infile, 			// name of input file
 	// IMAGE-DENOISING
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of shrinkage...\n");
-	printf ("[INFO] ... ... luminance channel...\n");
 	start = clock();
 
+	printf ("[INFO] ... ... luminance channel...\n");
 	if (shrinkage(kind, &y_list, sigma, th_3d, 0) != 0) {
 		return 1;
 	}
@@ -1418,9 +1413,9 @@ int bm3d (char* const infile, 			// name of input file
 	// AGGREGATION
 	// ----------------------------------------------------------------------
 	printf ("[INFO] ... launch of aggregation...\n");
-	printf ("[INFO] ... ... luminance channel...\n");
 	start = clock();
 
+	printf ("[INFO] ... ... luminance channel...\n");
 	if (aggregate(kind, &img, &y_list, 0) != 0) {
 		return 1;
 	}

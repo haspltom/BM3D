@@ -8,7 +8,7 @@
 #include "../utils/utils.h"
 #include "noising.h"
 
-int add_image_noise (char* const infile, char* const output_path, int const sigma) {
+int add_image_noise (char* const infile, char* const output_path, char* const kind, int const sigma) {
 	png_img img;
 	png_img org;
 	FILE* log;
@@ -28,7 +28,7 @@ int add_image_noise (char* const infile, char* const output_path, int const sigm
 		return 1;
 	}
 
-	sprintf (logfile, "log/log_%s[%d].txt", pure_name, sigma);
+	sprintf (logfile, "log/log_%s_%s[%d].txt", pure_name, kind, sigma);
 
 	log = fopen (logfile, "a");
 

@@ -30,7 +30,7 @@ int main (int argc, char **argv) {
 	// add noise to the image
 	printf ("[INFO] ... adding noise to image...\n");
 
-	if (add_image_noise(argv[1], argv[2], params.sigma) != 0) {
+	if (add_image_noise(argv[1], argv[2], params.kind, params.sigma) != 0) {
 		printf ("%s%s\n", err_prefix, ptr);
 		// free (ptr); //TODO
 		return 1;
